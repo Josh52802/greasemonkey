@@ -228,6 +228,7 @@ var greasemonkeyService = {
     var console;
     var storage;
     var xmlhttpRequester;
+    var parser;
     var resources;
     var safeWin = new XPCNativeWrapper(unsafeContentWin);
     var safeDoc = safeWin.document;
@@ -245,6 +246,7 @@ var greasemonkeyService = {
       storage = new GM_ScriptStorage(script);
       xmlhttpRequester = new GM_xmlhttpRequester(unsafeContentWin,
                                                  appSvc.hiddenDOMWindow);
+      parser = new GM_Parser(chromeWin, safeWin, unsafeContentWin);
       resources = new GM_Resources(script);
 
       sandbox.window = safeWin;
@@ -270,6 +272,7 @@ var greasemonkeyService = {
       sandbox.GM_registerMenuCommand = GM_hitch(this,
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
+      sandbox.GM_parse = GM_hitch(parser, "parse");
 
       sandbox.__proto__ = safeWin;
 
