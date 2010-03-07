@@ -161,8 +161,8 @@ GM_Parser.prototype = {
 
   // Parse XML using the DOM parser
   _parseFromXml: function(text) {
-    var domParser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-                              .getService(Components.interfaces.nsIDOMParser);
+    var domParser = new XPCNativeWrapper(this._unsafeWin, "DOMParser()").DOMParser;
+    domParser = new domParser();
 
     try {
       var doc = domParser.parseFromString(text, "text/xml");
@@ -175,12 +175,7 @@ GM_Parser.prototype = {
     domParser = null;
 
     // Pass to our callback
-    var self = this;
-    new XPCNativeWrapper(this._unsafeWin, "setTimeout()")
-        .setTimeout(function(doc) {
-      self.callback(doc);
-      self.callback = null;
-    }, 0, doc);
+    this._onParse(doc);
   },
 
   // Uses a hidden iframe to parse HTML, as the native DOM Parser does not support HTML.
@@ -206,7 +201,7 @@ GM_Parser.prototype = {
     iframe.addEventListener("DOMContentLoaded", function(event) {
       // Clean up our mess and trigger callback
       this.removeEventListener("DOMContentLoaded", arguments.callee, false);
-      self._onHTMLParse.call(self, event);
+      self._onParse.call(self, event.currentTarget.contentDocument);
       this.parentNode.removeChild(this);
     }, true);
 
@@ -244,14 +239,13 @@ GM_Parser.prototype = {
     converter = ioService = URI = request = baseChannel = uriLoader = null;
   },
 
-  // Handles the response DOM. Security will need to be revised.
-  _onHTMLParse: function(event) {
+  _onParse: function(doc) {
     var self = this;
     new XPCNativeWrapper(this._unsafeWin, "setTimeout()")
         .setTimeout(function(doc) {
-      self.callback(doc);
+      self.callback.call(self._safeWin, doc);
       self.callback = null;
-    }, 0, event.currentTarget.contentDocument);
+    }, 0, doc);
   }
 };
 
