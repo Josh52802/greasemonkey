@@ -94,6 +94,9 @@ window.addEventListener('unload', function() {
 }, false);
 
 var greasemonkeyAddons = {
+  uninstallMsg: "This user script will be removed when the Add-on manager window is closed.",
+  lastSelected: null,
+
   showView: function() {
     if ('userscripts' == gView) return;
     updateLastSelected('userscripts');
@@ -150,7 +153,11 @@ var greasemonkeyAddons = {
     // would go for extensions.
     item.setAttribute('addonId', id);
     item.setAttribute('name', script.name);
-    item.setAttribute('description', script.description);
+    if (script._uninstallReady) {
+      item.setAttribute('description', greasemonkeyAddons.uninstallMsg);
+    } else {
+      item.setAttribute('description', script.description);
+    }
     item.setAttribute('id', 'urn:greasemonkey:item:'+id);
     item.setAttribute('isDisabled', !script.enabled);
     // These hide extension-specific bits we don't want to display.
@@ -188,11 +195,26 @@ var greasemonkeyAddons = {
 
     if (!gExtensionsView.selectedItem) return;
     if ('userscripts' != gView) return;
+    var lastSelected = greasemonkeyAddons.lastSelected;
     var script = greasemonkeyAddons.findSelectedScript();
 
     // Remove/change the anonymous nodes we don't want.
     var item = gExtensionsView.selectedItem;
     var button;
+
+    if (lastSelected) {
+      // reset description
+      if (lastSelected.script._uninstallReady) {
+        lastSelected.item.setAttribute('description', greasemonkeyAddons.uninstallMsg);
+      }
+    }
+    greasemonkeyAddons.lastSelected = {
+      script: script,
+      item: item
+    };
+
+    // set this description
+    item.setAttribute('description', script.description);
 
     // Replace 'preferences' with 'edit'.
     button = item.ownerDocument.getAnonymousElementByAttribute(
@@ -311,6 +333,8 @@ var greasemonkeyAddons = {
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
+
+      selectedListitem.setAttribute('description', script.description);
 
       // Toggle buttons
       var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
