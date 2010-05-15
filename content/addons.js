@@ -216,27 +216,29 @@ var greasemonkeyAddons = {
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_uninstall');
-    if (!button) return;
-    button.setAttribute('command', 'cmd_userscript_uninstall');
-    button.setAttribute('disabled', 'false');
-    button.setAttribute('class', 'uninstallButton');
-    if (script._uninstallReady)
-      button.style.display = "none";
-    else
-      button.style.display = "inline";
+    if (button) {
+      button.setAttribute('command', 'cmd_userscript_uninstall');
+      button.setAttribute('disabled', 'false');
+      button.setAttribute('class', 'uninstallButton');
+      if (script._uninstallReady)
+        button.style.display = "none";
+      else
+        button.style.display = "inline";
+    }
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_cancelUninstall');
-    if (!button) return;
-    button.setAttribute('command', 'cmd_userscript_cancelUninstall');
-    button.setAttribute('disabled', 'false');
-    button.removeAttribute('hidden');
-    button.setAttribute('class', 'cancelUninstallButton');
-    button.hidden = !script._uninstallReady;
-    if (!script._uninstallReady)
-      button.style.display = "none";
-    else
-      button.style.display = "inline";
+    if (button) {
+      button.setAttribute('command', 'cmd_userscript_cancelUninstall');
+      button.setAttribute('disabled', 'false');
+      button.removeAttribute('hidden');
+      button.setAttribute('class', 'cancelUninstallButton');
+      button.hidden = !script._uninstallReady;
+      if (!script._uninstallReady)
+        button.style.display = "none";
+      else
+        button.style.display = "inline";
+    }
   },
 
   doCommand: function(command) {
@@ -286,6 +288,7 @@ var greasemonkeyAddons = {
       var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
         selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
       cancelBtn.style.display = "inline";
+      alerte(cancelBtn.getAttribute('command'));
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
