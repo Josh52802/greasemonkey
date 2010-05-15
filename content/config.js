@@ -74,6 +74,13 @@ Config.prototype = {
       script._basedir = node.getAttribute("basedir") || ".";
       script._downloadURL = node.getAttribute("installurl") || null;
 
+      // If the script folder is no longer present, set flag for saving
+      // and skip this script so that it is not saved
+      if (!script._basedirFile.exists()) {
+        fileModified = true;
+        continue;
+      }
+
       if (!node.getAttribute("modified") || !node.getAttribute("dependhash")) {
         script._modified = script._file.lastModifiedTime;
         var rawMeta = this.parse(
