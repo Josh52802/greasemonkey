@@ -85,11 +85,12 @@ window.addEventListener('load', function() {
 
 // Uninstall scripts that have been selected when the window closes
 window.addEventListener('unload', function() {
-    GM_config._scripts.forEach(function(script) {
-        if (script._uninstallReady) {
-          GM_config.uninstall(script); 
-        }
-      });
+    var scripts = GM_config._scripts;
+    for (var i = scripts.length - 1, script; script = scripts[i]; i--) {
+      if (script._uninstallReady) {
+        GM_config.uninstall(script); 
+      }
+    }
 }, false);
 
 var greasemonkeyAddons = {
