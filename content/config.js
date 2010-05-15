@@ -76,7 +76,7 @@ Config.prototype = {
 
       // If the script folder is no longer present, set flag for saving
       // and skip this script so that it is not saved
-      if (!script._basedirFile.exists()) {
+      if (!script._basedirFile.exists() || !script._file.exists()) {
         fileModified = true;
         continue;
       }
