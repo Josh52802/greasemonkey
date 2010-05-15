@@ -291,7 +291,6 @@ var greasemonkeyAddons = {
       var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
         selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
       cancelBtn.style.display = "inline";
-      alerte(cancelBtn.getAttribute('command'));
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
