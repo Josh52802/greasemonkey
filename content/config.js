@@ -66,6 +66,7 @@ Config.prototype = {
     var fileModified = false;
 
     this._scripts = [];
+    var removeScriptFolder = false;
 
     for (var node = null; node = nodes.iterateNext(); ) {
       var script = new Script(this);
@@ -76,11 +77,23 @@ Config.prototype = {
 
       // If the script folder is no longer present, set flag for saving
       // and skip this script so that it is not saved
-      if (!script._basedirFile.exists()) {
-        fileModified = true;
-        continue;
-      } else if (!script._file.exists()) {
+      try {
+        if (!script._basedirFile.exists()) {
+          removeScriptFolder = true;
+        }
+      } catch(e) {
+        removeScriptFolder = true;
+      }
+      if (removeScriptFolder) {
         this.uninstallFinalStep(script);
+        fileModified = true;
+        removeScriptFolder = false;
+        continue;
+      }
+
+      // if the file does not exist, then remove the folder and uninstall.
+      if (!script._file.exists()) {
+        this.uninstallSecondLastStep(script);
         fileModified = true;
         continue;
       }
@@ -383,10 +396,10 @@ Config.prototype = {
     this._scripts.splice(idx, 1);
     this._changed(script, "uninstall", null);
 
-    uninstallFinalStep(script);
+    this.uninstallSecondLastStep(script);
   },
 
-  uninstallFinalStep: function(script) {
+  uninstallSecondLastStep: function(script) {
     // watch out for cases like basedir="." and basedir="../gm_scripts"
     if (!script._basedirFile.equals(this._scriptDir)) {
       // if script has its own dir, remove the dir + contents
@@ -396,6 +409,10 @@ Config.prototype = {
       script._file.remove(false);
     }
 
+    this.uninstallFinalStep(script);
+  },
+
+  uninstallFinalStep: function(script) {
     if (GM_prefRoot.getValue("uninstallPreferences")) {
       // Remove saved preferences
       GM_prefRoot.remove(script.prefroot);
