@@ -18,9 +18,10 @@ function Script(config) {
   this._requires = [];
   this._resources = [];
   this._unwrap = false;
-  this._dependFail = false
+  this._dependFail = false;
   this.delayInjection = false;
   this._rawMeta = null;
+  this._uninstallReady = false;
 }
 
 Script.prototype = {

@@ -456,7 +456,7 @@ Config.prototype = {
   updateModifiedScripts: function() {
     // Find any updated scripts
     var scripts = this.getMatchingScripts(
-        function (script) { return script.isModified(); });
+        function (script) { return !this._uninstallReady && script.isModified(); });
     if (0 == scripts.length) return;
 
     for (var i = 0, script; script = scripts[i]; i++) {
