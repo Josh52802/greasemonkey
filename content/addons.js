@@ -83,6 +83,15 @@ window.addEventListener('load', function() {
   }
 }, false);
 
+// Uninstall scripts that have been selected when the window closes
+window.addEventListener('unload', function() {
+    GM_config._scripts.forEach(function(script) {
+        if (script._uninstallReady) {
+          GM_config.uninstall(script); 
+        }
+      });
+}, false);
+
 var greasemonkeyAddons = {
   showView: function() {
     if ('userscripts' == gView) return;
@@ -193,7 +202,7 @@ var greasemonkeyAddons = {
     button.setAttribute('command', 'cmd_userscript_edit');
     button.setAttribute('disabled', 'false');
 
-    // Rewire enable, disable, uninstall.
+    // Rewire enable, disable, uninstall, cancelUninstall.
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_enable');
     if (!button) return;
@@ -214,6 +223,24 @@ var greasemonkeyAddons = {
     button.setAttribute('tooltiptext', 'Uninstall the selected User Script');
     button.setAttribute('command', 'cmd_userscript_uninstall');
     button.setAttribute('disabled', 'false');
+    button.setAttribute('class', 'uninstallButton');
+    if (script._uninstallReady)
+      button.style.display = "none";
+    else
+      button.style.display = "inline";
+
+    button = item.ownerDocument.getAnonymousElementByAttribute(
+        item, 'command', 'cmd_cancelUninstall');
+    if (!button) return;
+    button.setAttribute('command', 'cmd_userscript_cancelUninstall');
+    button.setAttribute('disabled', 'false');
+    button.removeAttribute('hidden');
+    button.setAttribute('class', 'cancelUninstallButton');
+    button.hidden = !script._uninstallReady;
+    if (!script._uninstallReady)
+      button.style.display = "none";
+    else
+      button.style.display = "inline";
   },
 
   doCommand: function(command) {
@@ -253,8 +280,28 @@ var greasemonkeyAddons = {
       greasemonkeyAddons.fillList();
       break;
     case 'cmd_userscript_uninstall':
-      GM_config.uninstall(script);
+      script._uninstallReady = true;
+
+      // Toggle buttons
+      var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_uninstall');
+      uninstallBtn.style.display = "none";
+
+      var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
+      cancelBtn.style.display = "inline";
       break;
+    case 'cmd_userscript_cancelUninstall':
+      script._uninstallReady = false;
+
+      // Toggle buttons
+      var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
+      cancelBtn.style.display = "none";
+
+      var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_uninstall');
+      uninstallBtn.style.display = "inline";
     }
   },
 
