@@ -378,20 +378,24 @@ var greasemonkeyAddons = {
       popup.appendChild(menuitem);
     }
 
-    addMenuItem('Edit', 'cmd_userscript_edit');
-    if (script.enabled) {
-      addMenuItem('Disable', 'cmd_userscript_disable');
+    if (!script._uninstallReady) {
+      addMenuItem('Edit', 'cmd_userscript_edit');
+      if (script.enabled) {
+        addMenuItem('Disable', 'cmd_userscript_disable');
+      } else {
+        addMenuItem('Enable', 'cmd_userscript_enable');
+      }
+      addMenuItem('Uninstall', 'cmd_userscript_uninstall');
+
+      popup.appendChild(document.createElement('menuseparator'));
+
+      addMenuItem('Move Up', 'cmd_userscript_move_up');
+      addMenuItem('Move Down', 'cmd_userscript_move_down');
+      addMenuItem('Move To Top', 'cmd_userscript_move_top');
+      addMenuItem('Move To Bottom', 'cmd_userscript_move_bottom');
     } else {
-      addMenuItem('Enable', 'cmd_userscript_enable');
+      addMenuItem('Cancel Uninstall', 'cmd_userscript_cancelUninstall');
     }
-    addMenuItem('Uninstall', 'cmd_userscript_uninstall');
-
-    popup.appendChild(document.createElement('menuseparator'));
-
-    addMenuItem('Move Up', 'cmd_userscript_move_up');
-    addMenuItem('Move Down', 'cmd_userscript_move_down');
-    addMenuItem('Move To Top', 'cmd_userscript_move_top');
-    addMenuItem('Move To Bottom', 'cmd_userscript_move_bottom');
 
     popup.appendChild(document.createElement('menuseparator'));
 
