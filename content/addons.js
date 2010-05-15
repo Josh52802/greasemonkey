@@ -279,6 +279,22 @@ var greasemonkeyAddons = {
       return;
     }
 
+    function showButtons(commands) {
+      commands.forEach(function(command) {
+          var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+            selectedListitem, 'command', command);
+          cancelBtn.style.display = "inline";
+      });
+    }
+
+    function hideButtons (commands) {
+      commands.forEach(function(command) {
+          var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+            selectedListitem, 'command', command);
+          uninstallBtn.style.display = "none";
+      });
+    }
+
     var selectedListitem = gExtensionsView.selectedItem;
     switch (command) {
     case 'cmd_userscript_edit':
@@ -312,25 +328,9 @@ var greasemonkeyAddons = {
       script._uninstallReady = true;
 
       // Toggle buttons
-      var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_uninstall');
-      uninstallBtn.style.display = "none";
-
-      var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
-      cancelBtn.style.display = "inline";
-
-      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_edit');
-      editBtn.style.display = "none";
-
-      var enableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_enable');
-      enableBtn.style.display = "none";
-
-      var disableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_disable');
-      disableBtn.style.display = "none";
+      showButtons(['cmd_userscript_cancelUninstall']);
+      hideButtons(['cmd_userscript_uninstall', 'cmd_userscript_edit', 
+                   (script._enabled ? 'cmd_userscript_disable' : 'cmd_userscript_enable')]);
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
@@ -338,25 +338,9 @@ var greasemonkeyAddons = {
       selectedListitem.setAttribute('description', script.description);
 
       // Toggle buttons
-      var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_uninstall');
-      uninstallBtn.style.display = "inline";
-
-      var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
-      cancelBtn.style.display = "none";
-
-      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_edit');
-      editBtn.removeAttribute("style");
-
-      var enableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_enable');
-      enableBtn.removeAttribute("style");
-
-      var disableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', 'cmd_userscript_disable');
-      disableBtn.removeAttribute("style");
+      hideButtons(['cmd_userscript_cancelUninstall']);
+      showButtons(['cmd_userscript_uninstall', 'cmd_userscript_edit', 
+                   (script._enabled ? 'cmd_userscript_disable' : 'cmd_userscript_enable')]);
     }
   },
 
