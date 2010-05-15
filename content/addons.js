@@ -193,6 +193,10 @@ var greasemonkeyAddons = {
     var item = gExtensionsView.selectedItem;
     var button;
 
+    if (!item.getAttribute('uninstall')) {
+      item.setAttribute('uninstall', 'false');
+    }
+
     // Replace 'preferences' with 'edit'.
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_options');
@@ -201,7 +205,11 @@ var greasemonkeyAddons = {
     button.setAttribute('accesskey', 'E');
     button.setAttribute('tooltiptext', 'Edit the selected User Script');
     button.setAttribute('command', 'cmd_userscript_edit');
-    button.setAttribute('disabled', 'false');
+    if (item.getAttribute('uninstall') == "false") {
+      button.setAttribute('hidden', 'false');
+    } else {
+      button.setAttribute('hidden', 'true');
+    }
 
     // Rewire enable, disable, uninstall, cancelUninstall.
     button = item.ownerDocument.getAnonymousElementByAttribute(
@@ -209,14 +217,22 @@ var greasemonkeyAddons = {
     if (!button) return;
     button.setAttribute('tooltiptext', 'Enable the selected User Script');
     button.setAttribute('command', 'cmd_userscript_enable');
-    button.setAttribute('disabled', 'false');
+    if (item.getAttribute('uninstall') == "false") {
+      button.setAttribute('hidden', 'false');
+    } else {
+      button.setAttribute('hidden', 'true');
+    }
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_disable');
     if (!button) return;
     button.setAttribute('tooltiptext', 'Disable the selected User Script');
     button.setAttribute('command', 'cmd_userscript_disable');
-    button.setAttribute('disabled', 'false');
+    if (item.getAttribute('uninstall') == "false") {
+      button.setAttribute('hidden', 'false');
+    } else {
+      button.setAttribute('hidden', 'true');
+    }
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_uninstall');
@@ -284,6 +300,8 @@ var greasemonkeyAddons = {
     case 'cmd_userscript_uninstall':
       script._uninstallReady = true;
 
+      selectedListitem.setAttribute('uninstall', 'true');
+
       // Toggle buttons
       var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
         selectedListitem, 'command', 'cmd_userscript_uninstall');
@@ -292,9 +310,23 @@ var greasemonkeyAddons = {
       var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
         selectedListitem, 'command', 'cmd_userscript_cancelUninstall');
       cancelBtn.style.display = "inline";
+
+      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_edit');
+      editBtn.hidden = "true";
+
+      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_enable');
+      editBtn.hidden = "true";
+
+      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_disable');
+      editBtn.hidden = "true";
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
+
+      selectedListitem.setAttribute('uninstall', 'false');
 
       // Toggle buttons
       var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
@@ -304,6 +336,18 @@ var greasemonkeyAddons = {
       var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
         selectedListitem, 'command', 'cmd_userscript_uninstall');
       uninstallBtn.style.display = "inline";
+
+      var editBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_edit');
+      editBtn.hidden = "false";
+
+      var enableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_enable');
+      enableBtn.hidden = "false";
+
+      var disableBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', 'cmd_userscript_disable');
+      disableBtn.hidden = "false";
     }
   },
 
