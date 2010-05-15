@@ -259,6 +259,7 @@ var greasemonkeyAddons = {
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_cancelUninstall');
     if (button) {
+      button.setAttribute('tooltiptext', 'Cancel Uninstall of the selected User Script');
       button.setAttribute('command', 'cmd_userscript_cancelUninstall');
       button.setAttribute('disabled', 'false');
       button.removeAttribute('hidden');
