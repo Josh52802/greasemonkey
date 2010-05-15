@@ -76,7 +76,11 @@ Config.prototype = {
 
       // If the script folder is no longer present, set flag for saving
       // and skip this script so that it is not saved
-      if (!script._basedirFile.exists() || !script._file.exists()) {
+      if (!script._basedirFile.exists()) {
+        fileModified = true;
+        continue;
+      } else if (!script._file.exists()) {
+        this.uninstallFinalStep(script);
         fileModified = true;
         continue;
       }
@@ -379,6 +383,10 @@ Config.prototype = {
     this._scripts.splice(idx, 1);
     this._changed(script, "uninstall", null);
 
+    uninstallFinalStep(script);
+  },
+
+  uninstallFinalStep: function(script) {
     // watch out for cases like basedir="." and basedir="../gm_scripts"
     if (!script._basedirFile.equals(this._scriptDir)) {
       // if script has its own dir, remove the dir + contents
