@@ -279,23 +279,31 @@ var greasemonkeyAddons = {
       return;
     }
 
-    function showButtons(commands) {
-      commands.forEach(function(command) {
-          var cancelBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-            selectedListitem, 'command', command);
-          cancelBtn.style.display = "inline";
-      });
-    }
-
-    function hideButtons (commands) {
-      commands.forEach(function(command) {
-          var uninstallBtn = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-            selectedListitem, 'command', command);
-          uninstallBtn.style.display = "none";
-      });
-    }
 
     var selectedListitem = gExtensionsView.selectedItem;
+    function cmdGet(command) {
+      var cmd = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
+        selectedListitem, 'command', command);
+      return cmd;
+    }
+
+    function cmdsShow(commands) {
+      commands.forEach(function(command) {
+        cmdGet(command).style.display = "inline";
+      });
+    }
+    function cmdsRemoveStyle(commands) {
+      commands.forEach(function(command) {
+        cmdGet(command).removeAttribute("style");
+      });
+    }
+
+    function cmdsHide(commands) {
+      commands.forEach(function(command) {
+        cmdGet(command).style.display = "none";
+      });
+    }
+
     switch (command) {
     case 'cmd_userscript_edit':
       GM_openInEditor(script);
@@ -328,9 +336,8 @@ var greasemonkeyAddons = {
       script._uninstallReady = true;
 
       // Toggle buttons
-      showButtons(['cmd_userscript_cancelUninstall']);
-      hideButtons(['cmd_userscript_uninstall', 'cmd_userscript_edit', 
-                   (script._enabled ? 'cmd_userscript_disable' : 'cmd_userscript_enable')]);
+      cmdsHide(['cmd_userscript_uninstall', 'cmd_userscript_edit', 'cmd_userscript_disable', 'cmd_userscript_enable']);
+      cmdsShow(['cmd_userscript_cancelUninstall']);
       break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
@@ -338,9 +345,9 @@ var greasemonkeyAddons = {
       selectedListitem.setAttribute('description', script.description);
 
       // Toggle buttons
-      hideButtons(['cmd_userscript_cancelUninstall']);
-      showButtons(['cmd_userscript_uninstall', 'cmd_userscript_edit', 
-                   (script._enabled ? 'cmd_userscript_disable' : 'cmd_userscript_enable')]);
+      cmdsHide(['cmd_userscript_cancelUninstall']);
+      cmdsRemoveStyle(['cmd_userscript_edit', 'cmd_userscript_disable', 'cmd_userscript_enable']);
+      cmdsShow(['cmd_userscript_uninstall']);
     }
   },
 
