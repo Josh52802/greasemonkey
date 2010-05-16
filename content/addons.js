@@ -56,6 +56,9 @@ var observer = {
         break;
       case "uninstall":
         listbox.removeChild(node);
+        if (greasemonkeyAddons.lastSelected) {
+          greasemonkeyAddons.lastSelected = null;
+        }
         break;
       case "move":
         listbox.removeChild(node);
@@ -339,6 +342,9 @@ var greasemonkeyAddons = {
       cmdsHide(['cmd_userscript_uninstall', 'cmd_userscript_edit', 'cmd_userscript_disable', 'cmd_userscript_enable']);
       cmdsShow(['cmd_userscript_cancelUninstall']);
       break;
+    case 'cmd_userscript_confirmUninstall':
+      GM_config.uninstall(script); 
+      break;
     case 'cmd_userscript_cancelUninstall':
       script._uninstallReady = false;
 
@@ -369,6 +375,9 @@ var greasemonkeyAddons = {
       menuitem.setAttribute('command', command);
       popup.appendChild(menuitem);
     }
+    function addMenuSeparator(label, command) {
+      popup.appendChild(document.createElement('menuseparator'));
+    }
 
     if (!script._uninstallReady) {
       addMenuItem('Edit', 'cmd_userscript_edit');
@@ -379,7 +388,7 @@ var greasemonkeyAddons = {
       }
       addMenuItem('Uninstall', 'cmd_userscript_uninstall');
 
-      popup.appendChild(document.createElement('menuseparator'));
+      addMenuSeparator();
 
       addMenuItem('Move Up', 'cmd_userscript_move_up');
       addMenuItem('Move Down', 'cmd_userscript_move_down');
@@ -387,9 +396,11 @@ var greasemonkeyAddons = {
       addMenuItem('Move To Bottom', 'cmd_userscript_move_bottom');
     } else {
       addMenuItem('Cancel Uninstall', 'cmd_userscript_cancelUninstall');
+      addMenuSeparator();
+      addMenuItem('Confirm Uninstall', 'cmd_userscript_confirmUninstall');
     }
 
-    popup.appendChild(document.createElement('menuseparator'));
+    addMenuSeparator();
 
     addMenuItem('Sort Scripts', 'cmd_userscript_sort');
   }
