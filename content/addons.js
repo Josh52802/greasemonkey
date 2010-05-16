@@ -57,7 +57,10 @@ var observer = {
       case "uninstall":
         listbox.removeChild(node);
         if (greasemonkeyAddons.lastSelected) {
-          greasemonkeyAddons.lastSelected = null;
+          var item = greasemonkeyAddons.lastSelected.item;
+          if (item.getAttribute('addonId') == script.namespace + script.name) {
+            greasemonkeyAddons.lastSelected = null;
+          }
         }
         break;
       case "move":
