@@ -1,6 +1,12 @@
 // Globals.
 var GM_config = GM_getConfig();
 
+var GM_stringBundle = Components
+    .classes["@mozilla.org/intl/stringbundle;1"]
+    .getService(Components.interfaces.nsIStringBundleService)
+    .createBundle("chrome://greasemonkey/locale/gm-manage.properties");
+function GM_string(key) { return GM_stringBundle.GetStringFromName(key); }
+
 (function() {
 // Override some built-in functions, with a closure reference to the original
 // function, to either handle or delegate the call.
@@ -34,12 +40,16 @@ window.addEventListener("unload", function() {
 
 var observer = {
   notifyEvent: function(script, event, data) {
+    // if the currently open tab is not the userscripts tab, then ignore event.
+    if (gView != 'userscripts') return;
+
     if (event == "install") {
       var item = greasemonkeyAddons.addScriptToList(script);
       gExtensionsView.selectedItem = item;
       return;
     }
 
+    // find the script's node in the listbox
     var listbox = gExtensionsView;
     var node;
     var scriptId = script.namespace + script.name;
@@ -66,6 +76,10 @@ var observer = {
       case "move":
         listbox.removeChild(node);
         listbox.insertBefore(node, listbox.childNodes[data]);
+        break;
+      case "modified":
+        var item = greasemonkeyAddons.listitemForScript(script);
+        gExtensionsView.replaceChild(item, node);
         break;
     }
   }
@@ -164,6 +178,7 @@ var greasemonkeyAddons = {
     } else {
       item.setAttribute('description', script.description);
     }
+    item.setAttribute('version', script.version);
     item.setAttribute('id', 'urn:greasemonkey:item:'+id);
     item.setAttribute('isDisabled', !script.enabled);
     // These hide extension-specific bits we don't want to display.
@@ -226,9 +241,9 @@ var greasemonkeyAddons = {
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_options');
     if (!button) return;
-    button.setAttribute('label', 'Edit');
-    button.setAttribute('accesskey', 'E');
-    button.setAttribute('tooltiptext', 'Edit the selected User Script');
+    button.setAttribute('label', GM_string('Edit'));
+    button.setAttribute('accesskey', GM_string('Edit.accesskey'));
+    button.setAttribute('tooltiptext', GM_string('Edit.tooltip'));
     button.setAttribute('command', 'cmd_userscript_edit');
     button.setAttribute('disabled', false);
     if (script._uninstallReady) button.style.display = "none";
@@ -237,7 +252,7 @@ var greasemonkeyAddons = {
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_enable');
     if (!button) return;
-    button.setAttribute('tooltiptext', 'Enable the selected User Script');
+    button.setAttribute('tooltiptext', GM_string('Enable.tooltip'));
     button.setAttribute('command', 'cmd_userscript_enable');
     button.setAttribute('disabled', false);
     if (script._uninstallReady) button.style.display = "none";
@@ -245,7 +260,7 @@ var greasemonkeyAddons = {
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_disable');
     if (!button) return;
-    button.setAttribute('tooltiptext', 'Disable the selected User Script');
+    button.setAttribute('tooltiptext', GM_string('Disable.tooltip'));
     button.setAttribute('command', 'cmd_userscript_disable');
     button.setAttribute('disabled', false);
     if (script._uninstallReady) button.style.display = "none";
@@ -253,7 +268,7 @@ var greasemonkeyAddons = {
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_uninstall');
     if (!button) return;
-    button.setAttribute('tooltiptext', 'Uninstall the selected User Script');
+    button.setAttribute('tooltiptext', GM_string('Uninstall.tooltip'));
     button.setAttribute('command', 'cmd_userscript_uninstall');
     button.setAttribute('disabled', 'false');
     button.setAttribute('class', 'uninstallButton');
@@ -281,7 +296,7 @@ var greasemonkeyAddons = {
   doCommand: function(command) {
     var script = greasemonkeyAddons.findSelectedScript();
     if (!script) {
-      alert('Crap, something went wrong!');
+      dump("greasemonkeyAddons.doCommand() could not find selected script.\n");
       return;
     }
 
@@ -363,7 +378,7 @@ var greasemonkeyAddons = {
   buildContextMenu: function(aEvent) {
     var script = greasemonkeyAddons.findSelectedScript();
     if (!script) {
-      alert('Crap, something went wrong!');
+      dump("greasemonkeyAddons.buildContextMenu() could not find selected script.\n");
       return;
     }
 
@@ -372,10 +387,25 @@ var greasemonkeyAddons = {
       popup.removeChild(popup.firstChild);
     }
 
-    function addMenuItem(label, command) {
+    function forceDisabled(aEvent) {
+      if ('disabled' != aEvent.attrName) return;
+      if ('true' == aEvent.newValue) return;
+      aEvent.target.setAttribute('disabled', 'true');
+    }
+    function addMenuItem(label, command, enabled) {
       var menuitem = document.createElement('menuitem');
-      menuitem.setAttribute('label', label);
+      menuitem.setAttribute('label', GM_string(label));
+      menuitem.setAttribute('accesskey', GM_string(label+'.accesskey'));
       menuitem.setAttribute('command', command);
+
+      if ('undefined' == typeof enabled) enabled = true;
+      if (!enabled) {
+        menuitem.setAttribute('disabled', 'true');
+        // Something is un-setting the disabled attribute.  Work around that,
+        // this way for now.
+        menuitem.addEventListener('DOMAttrModified', forceDisabled, true);
+      }
+
       popup.appendChild(menuitem);
     }
     function addMenuSeparator(label, command) {
@@ -405,6 +435,7 @@ var greasemonkeyAddons = {
 
     addMenuSeparator();
 
-    addMenuItem('Sort Scripts', 'cmd_userscript_sort');
+    addMenuItem('Sort Scripts', 'cmd_userscript_sort',
+        gExtensionsView.itemCount > 1);
   }
 };
