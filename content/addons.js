@@ -174,7 +174,7 @@ var greasemonkeyAddons = {
     item.setAttribute('addonId', script.id);
     item.setAttribute('name', script.name);
     if (script._uninstallReady) {
-      item.setAttribute('description', greasemonkeyAddons.uninstallMsg);
+      item.setAttribute('description', GM_string('UninstallMsg'));
     } else {
       item.setAttribute('description', script.description);
     }
