@@ -52,9 +52,8 @@ var observer = {
     // find the script's node in the listbox
     var listbox = gExtensionsView;
     var node;
-    var scriptId = script.namespace + script.name;
     for (var i = 0; node = listbox.childNodes[i]; i++) {
-      if (node.getAttribute('addonId') == scriptId) {
+      if (node.getAttribute('addonId') == script.id) {
         break;
       }
     }
@@ -168,10 +167,9 @@ var greasemonkeyAddons = {
     var item = document.createElement('richlistitem');
     item.setAttribute('class', 'userscript');
     // Fake this for now.
-    var id = script.namespace + script.name;
     // Setting these attributes inherits the values into the same place they
     // would go for extensions.
-    item.setAttribute('addonId', id);
+    item.setAttribute('addonId', script.id);
     item.setAttribute('name', script.name);
     if (script._uninstallReady) {
       item.setAttribute('description', greasemonkeyAddons.uninstallMsg);
@@ -179,7 +177,7 @@ var greasemonkeyAddons = {
       item.setAttribute('description', script.description);
     }
     item.setAttribute('version', script.version);
-    item.setAttribute('id', 'urn:greasemonkey:item:'+id);
+    item.setAttribute('id', 'urn:greasemonkey:item:'+script.id);
     item.setAttribute('isDisabled', !script.enabled);
     // These hide extension-specific bits we don't want to display.
     item.setAttribute('blocklisted', 'false');
@@ -203,7 +201,7 @@ var greasemonkeyAddons = {
     var scripts = GM_config.scripts;
     var selectedScriptId = gExtensionsView.selectedItem.getAttribute('addonId');
     for (var i = 0, script = null; script = scripts[i]; i++) {
-      if (selectedScriptId == script.namespace + script.name) {
+      if (selectedScriptId == script.id) {
         return script;
       }
     }
