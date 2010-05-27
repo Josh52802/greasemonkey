@@ -65,10 +65,10 @@ var observer = {
         break;
       case "uninstall":
         listbox.removeChild(node);
-        if (greasemonkeyAddons.lastSelected) {
-          var item = greasemonkeyAddons.lastSelected.item;
-          if (item.getAttribute('addonId') == script.namespace + script.name) {
-            greasemonkeyAddons.lastSelected = null;
+        if (greasemonkeyAddons.lastSelectedScript) {
+          var item = greasemonkeyAddons.lastSelectedScript.item;
+          if (item.getAttribute('addonId') == script.id) {
+            greasemonkeyAddons.lastSelectedScript = null;
           }
         }
         break;
@@ -113,7 +113,10 @@ window.addEventListener('unload', function() {
 }, false);
 
 var greasemonkeyAddons = {
-  lastSelected: null,
+  // keep track of the last selected script so that changing the description
+  // will be simple to change when switching the selected user script. This
+  // is only needed when a user script is ready to be uninstalled.
+  lastSelectedScript: null,
 
   showView: function() {
     if ('userscripts' == gView) return;
@@ -213,21 +216,22 @@ var greasemonkeyAddons = {
 
     if (!gExtensionsView.selectedItem) return;
     if ('userscripts' != gView) return;
-    var lastSelected = greasemonkeyAddons.lastSelected;
+    var lastSelectedScript = greasemonkeyAddons.lastSelectedScript;
     var script = greasemonkeyAddons.findSelectedScript();
 
     // Remove/change the anonymous nodes we don't want.
     var item = gExtensionsView.selectedItem;
     var button;
 
-    if (lastSelected) {
+    // update the description for the last selected user script to an uninstall
+    // message if the user script is ready to be uninstalled
+    if (lastSelectedScript && lastSelectedScript.script._uninstallReady) {
+      lastSelectedScript.item.removeAttribute('opType');
       // reset description
-      if (lastSelected.script._uninstallReady) {
-        lastSelected.item.removeAttribute('opType');
-        lastSelected.item.setAttribute('description', GM_string('UninstallMsg'));
-      }
+      lastSelectedScript.item.setAttribute('description', GM_string('UninstallMsg'));
     }
-    greasemonkeyAddons.lastSelected = {
+    // update the reference to the last selected user script
+    greasemonkeyAddons.lastSelectedScript = {
       script: script,
       item: item
     };
