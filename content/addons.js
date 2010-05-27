@@ -113,7 +113,6 @@ window.addEventListener('unload', function() {
 }, false);
 
 var greasemonkeyAddons = {
-  uninstallMsg: "This user script will be removed when the Add-on manager window is closed.",
   lastSelected: null,
 
   showView: function() {
@@ -224,7 +223,8 @@ var greasemonkeyAddons = {
     if (lastSelected) {
       // reset description
       if (lastSelected.script._uninstallReady) {
-        lastSelected.item.setAttribute('description', greasemonkeyAddons.uninstallMsg);
+        lastSelected.item.removeAttribute('opType');
+        lastSelected.item.setAttribute('description', GM_string('UninstallMsg'));
       }
     }
     greasemonkeyAddons.lastSelected = {
@@ -235,6 +235,11 @@ var greasemonkeyAddons = {
     // set this description
     item.setAttribute('description', script.description);
 
+    if (script._uninstallReady) {
+      item.setAttribute('opType', 'needs-uninstall');
+      greasemonkeyAddons.displayUninstallMsg(item);
+    }
+
     // Replace 'preferences' with 'edit'.
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_options');
@@ -244,7 +249,6 @@ var greasemonkeyAddons = {
     button.setAttribute('tooltiptext', GM_string('Edit.tooltip'));
     button.setAttribute('command', 'cmd_userscript_edit');
     button.setAttribute('disabled', false);
-    if (script._uninstallReady) button.style.display = "none";
 
     // Rewire enable, disable, uninstall, cancelUninstall.
     button = item.ownerDocument.getAnonymousElementByAttribute(
@@ -253,7 +257,6 @@ var greasemonkeyAddons = {
     button.setAttribute('tooltiptext', GM_string('Enable.tooltip'));
     button.setAttribute('command', 'cmd_userscript_enable');
     button.setAttribute('disabled', false);
-    if (script._uninstallReady) button.style.display = "none";
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_disable');
@@ -261,7 +264,6 @@ var greasemonkeyAddons = {
     button.setAttribute('tooltiptext', GM_string('Disable.tooltip'));
     button.setAttribute('command', 'cmd_userscript_disable');
     button.setAttribute('disabled', false);
-    if (script._uninstallReady) button.style.display = "none";
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_uninstall');
@@ -269,26 +271,13 @@ var greasemonkeyAddons = {
     button.setAttribute('tooltiptext', GM_string('Uninstall.tooltip'));
     button.setAttribute('command', 'cmd_userscript_uninstall');
     button.setAttribute('disabled', 'false');
-    button.setAttribute('class', 'uninstallButton');
-    if (script._uninstallReady)
-      button.style.display = "none";
-    else
-      button.style.display = "inline";
 
     button = item.ownerDocument.getAnonymousElementByAttribute(
         item, 'command', 'cmd_cancelUninstall');
-    if (button) {
-      button.setAttribute('tooltiptext', 'Cancel Uninstall of the selected User Script');
-      button.setAttribute('command', 'cmd_userscript_cancelUninstall');
-      button.setAttribute('disabled', 'false');
-      button.removeAttribute('hidden');
-      button.setAttribute('class', 'cancelUninstallButton');
-      button.hidden = !script._uninstallReady;
-      if (!script._uninstallReady)
-        button.style.display = "none";
-      else
-        button.style.display = "inline";
-    }
+    if (!button) return;
+    button.setAttribute('tooltiptext', GM_string('UninstallCancel.tooltip'));
+    button.setAttribute('command', 'cmd_userscript_uninstall_cancel');
+    button.setAttribute('disabled', 'false');
   },
 
   doCommand: function(command) {
@@ -300,29 +289,6 @@ var greasemonkeyAddons = {
 
 
     var selectedListitem = gExtensionsView.selectedItem;
-    function cmdGet(command) {
-      var cmd = selectedListitem.ownerDocument.getAnonymousElementByAttribute(
-        selectedListitem, 'command', command);
-      return cmd;
-    }
-
-    function cmdsShow(commands) {
-      commands.forEach(function(command) {
-        cmdGet(command).style.display = "inline";
-      });
-    }
-    function cmdsRemoveStyle(commands) {
-      commands.forEach(function(command) {
-        cmdGet(command).removeAttribute("style");
-      });
-    }
-
-    function cmdsHide(commands) {
-      commands.forEach(function(command) {
-        cmdGet(command).style.display = "none";
-      });
-    }
-
     switch (command) {
     case 'cmd_userscript_edit':
       GM_openInEditor(script);
@@ -353,24 +319,31 @@ var greasemonkeyAddons = {
       break;
     case 'cmd_userscript_uninstall':
       script._uninstallReady = true;
-
-      // Toggle buttons
-      cmdsHide(['cmd_userscript_uninstall', 'cmd_userscript_edit', 'cmd_userscript_disable', 'cmd_userscript_enable']);
-      cmdsShow(['cmd_userscript_cancelUninstall']);
+      selectedListitem.setAttribute('opType', 'needs-uninstall');
+      greasemonkeyAddons.displayUninstallMsg(selectedListitem);
       break;
-    case 'cmd_userscript_confirmUninstall':
-      GM_config.uninstall(script); 
-      break;
-    case 'cmd_userscript_cancelUninstall':
+    case 'cmd_userscript_uninstall_cancel':
       script._uninstallReady = false;
 
-      selectedListitem.setAttribute('description', script.description);
-
-      // Toggle buttons
-      cmdsHide(['cmd_userscript_cancelUninstall']);
-      cmdsRemoveStyle(['cmd_userscript_edit', 'cmd_userscript_disable', 'cmd_userscript_enable']);
-      cmdsShow(['cmd_userscript_uninstall']);
+      selectedListitem.removeAttribute('opType');
+      break;
+    case 'cmd_userscript_uninstall_now':
+      GM_config.uninstall(script);
+      break;
     }
+  },
+
+  displayUninstallMsg: function(selectedListitem) {
+    // This setTimeout puts this after the opType set has taken effect, and
+    // the element is created.
+    // Todo: is there a way to do this sooner, that's still not too late?
+    setTimeout(function() {
+      var labelBox = selectedListitem.ownerDocument
+          .getAnonymousElementByAttribute(
+              selectedListitem, 'anonid', 'addonOpType');
+      var label = labelBox.ownerDocument.getAnonymousNodes(labelBox)[0];
+      label.setAttribute('value', GM_string('UninstallMsg'));
+    }, 0);
   },
 
   buildContextMenu: function(aEvent) {
@@ -380,6 +353,7 @@ var greasemonkeyAddons = {
       return;
     }
 
+    var selectedItem = gExtensionsView.selectedItem;
     var popup = document.getElementById('addonContextMenu');
     while (popup.hasChildNodes()) {
       popup.removeChild(popup.firstChild);
@@ -426,9 +400,9 @@ var greasemonkeyAddons = {
       addMenuItem('Move To Top', 'cmd_userscript_move_top');
       addMenuItem('Move To Bottom', 'cmd_userscript_move_bottom');
     } else {
-      addMenuItem('Cancel Uninstall', 'cmd_userscript_cancelUninstall');
+      addMenuItem('UninstallCancel', 'cmd_userscript_uninstall_cancel');
       addMenuSeparator();
-      addMenuItem('Confirm Uninstall', 'cmd_userscript_confirmUninstall');
+      addMenuItem('UninstallNow', 'cmd_userscript_uninstall_now');
     }
 
     addMenuSeparator();
