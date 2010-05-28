@@ -106,7 +106,7 @@ window.addEventListener('load', function() {
 window.addEventListener('unload', function() {
     var scripts = GM_config._scripts;
     for (var i = scripts.length - 1, script; script = scripts[i]; i--) {
-      if (script._uninstallReady) {
+      if (script.uninstallReady) {
         GM_config.uninstall(script); 
       }
     }
@@ -173,7 +173,7 @@ var greasemonkeyAddons = {
     // would go for extensions.
     item.setAttribute('addonId', script.id);
     item.setAttribute('name', script.name);
-    if (script._uninstallReady) {
+    if (script.uninstallReady) {
       item.setAttribute('description', GM_string('UninstallMsg'));
     } else {
       item.setAttribute('description', script.description);
@@ -225,7 +225,7 @@ var greasemonkeyAddons = {
 
     // update the description for the last selected user script to an uninstall
     // message if the user script is ready to be uninstalled
-    if (lastSelectedScript && lastSelectedScript.script._uninstallReady) {
+    if (lastSelectedScript && lastSelectedScript.script.uninstallReady) {
       lastSelectedScript.item.removeAttribute('opType');
       // reset description
       lastSelectedScript.item.setAttribute('description', GM_string('UninstallMsg'));
@@ -239,7 +239,7 @@ var greasemonkeyAddons = {
     // set this description
     item.setAttribute('description', script.description);
 
-    if (script._uninstallReady) {
+    if (script.uninstallReady) {
       item.setAttribute('opType', 'needs-uninstall');
       greasemonkeyAddons.displayUninstallMsg(item);
     }
@@ -322,12 +322,12 @@ var greasemonkeyAddons = {
       greasemonkeyAddons.fillList();
       break;
     case 'cmd_userscript_uninstall':
-      script._uninstallReady = true;
+      script.uninstallReady = true;
       selectedListitem.setAttribute('opType', 'needs-uninstall');
       greasemonkeyAddons.displayUninstallMsg(selectedListitem);
       break;
     case 'cmd_userscript_uninstall_cancel':
-      script._uninstallReady = false;
+      script.uninstallReady = false;
 
       selectedListitem.removeAttribute('opType');
       break;
@@ -388,7 +388,7 @@ var greasemonkeyAddons = {
       popup.appendChild(document.createElement('menuseparator'));
     }
 
-    if (!script._uninstallReady) {
+    if (!script.uninstallReady) {
       addMenuItem('Edit', 'cmd_userscript_edit');
       if (script.enabled) {
         addMenuItem('Disable', 'cmd_userscript_disable');

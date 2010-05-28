@@ -22,7 +22,7 @@ function Script(config) {
   this._dependFail = false;
   this.delayInjection = false;
   this._rawMeta = null;
-  this._uninstallReady = false;
+  this.uninstallReady = false;
 }
 
 Script.prototype = {

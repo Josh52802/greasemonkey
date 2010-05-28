@@ -218,7 +218,10 @@ var greasemonkeyService = {
 
   initScripts: function(url, wrappedContentWin, chromeWin) {
     function testMatch(script) {
-      return !script.delayInjection && !script._uninstallReady && script.enabled && script.matchesURL(url);
+      return !script.delayInjection && 
+          !script.uninstallReady &&
+          script.enabled && 
+          script.matchesURL(url);
     }
 
     // Todo: Try to implement this w/out global state.
