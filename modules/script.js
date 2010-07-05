@@ -8,8 +8,6 @@ Cu.import("resource://greasemonkey/miscapis.js");
 Cu.import("resource://greasemonkey/convert2RegExp.js");
 Cu.import("resource://greasemonkey/scriptdownloader.js");
 
-GM_apiAcceptableFile(Components.stack.filename);
-
 function Script(config) {
   this._config = config;
   this._observers = [];

@@ -13,6 +13,8 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 const appSvc = Cc["@mozilla.org/appshell/appShellService;1"]
                  .getService(Ci.nsIAppShellService);
 
+const serviceFilename = Components.stack.filename;
+
 var getMaxJSVersion = function(){
   var maxJSVersion = (function() {
     var appInfo = Cc["@mozilla.org/xre/app-info;1"]
@@ -61,7 +63,7 @@ GM_GreasemonkeyService.prototype = {
       Ci.nsIContentPolicy
   ]),
 
-  get filename() { return Components.stack.filename; },
+  get filename() { return serviceFilename; },
 
   _config: null,
   get config() {
@@ -94,7 +96,6 @@ GM_GreasemonkeyService.prototype = {
     Cu.import("resource://greasemonkey/utils.js");
     Cu.import("resource://greasemonkey/config.js");
     Cu.import("resource://greasemonkey/miscapis.js");
-    Cu.import("resource://greasemonkey/xmlhttprequester.js");
   },
 
   shouldLoad: function(ct, cl, org, ctx, mt, ext) {
@@ -185,12 +186,11 @@ GM_GreasemonkeyService.prototype = {
   injectScripts: function(scripts, url, wrappedContentWin, chromeWin, gmBrowser) {
     var sandbox;
     var script;
-    var logger;
     var console;
-    var storage;
-    var xmlhttpRequester;
-    var resources;
     var unsafeContentWin = wrappedContentWin.wrappedJSObject;
+
+    var tools = {};
+    Cu.import("resource://greasemonkey/api.js", tools);
 
     // detect and grab reference to firebug console and context, if it exists
     var firebugConsole = this.getFirebugConsole(unsafeContentWin, chromeWin);
@@ -198,15 +198,16 @@ GM_GreasemonkeyService.prototype = {
     for (var i = 0; script = scripts[i]; i++) {
       sandbox = new Cu.Sandbox(wrappedContentWin);
 
-      logger = new GM_ScriptLogger(script);
-
       console = firebugConsole ? firebugConsole : new GM_console(script);
 
-      storage = new GM_ScriptStorage(script);
-      xmlhttpRequester = new GM_xmlhttpRequester(unsafeContentWin,
-                                                 appSvc.hiddenDOMWindow,
-                                                 url);
-      resources = new GM_Resources(script);
+      var GM_API = new tools.GM_API(
+          script,
+          url,
+          wrappedContentWin.document,
+          unsafeContentWin,
+          appSvc.hiddenDOMWindow,
+          chromeWin,
+          gmBrowser);
 
       sandbox.window = wrappedContentWin;
       sandbox.document = sandbox.window.document;
@@ -216,25 +217,10 @@ GM_GreasemonkeyService.prototype = {
       sandbox.XPathResult = Ci.nsIDOMXPathResult;
 
       // add our own APIs
-      sandbox.GM_addStyle = function(css) {
-            GM_addStyle(wrappedContentWin.document, css);
-          };
-      sandbox.GM_log = GM_hitch(logger, "log");
+      for (var funcName in GM_API) {
+        sandbox[funcName] = GM_API[funcName]
+      }
       sandbox.console = console;
-      sandbox.GM_setValue = GM_hitch(storage, "setValue");
-      sandbox.GM_getValue = GM_hitch(storage, "getValue");
-      sandbox.GM_deleteValue = GM_hitch(storage, "deleteValue");
-      sandbox.GM_listValues = GM_hitch(storage, "listValues");
-      sandbox.GM_getResourceURL = GM_hitch(resources, "getResourceURL");
-      sandbox.GM_getResourceText = GM_hitch(resources, "getResourceText");
-      sandbox.GM_openInTab = GM_hitch(
-          this, "openInTab", wrappedContentWin, chromeWin);
-      sandbox.GM_xmlhttpRequest = GM_hitch(xmlhttpRequester,
-                                           "contentStartRequest");
-      sandbox.GM_registerMenuCommand = GM_hitch(this,
-                                                "registerMenuCommand",
-                                                unsafeContentWin,
-                                                gmBrowser);
 
       sandbox.__proto__ = wrappedContentWin;
 
@@ -264,39 +250,6 @@ GM_GreasemonkeyService.prototype = {
         this.evalInSandbox("(function(){"+ scriptSrc +"})()",
                            url, sandbox, script); // wrap anyway on early return
     }
-  },
-
-  registerMenuCommand: function(unsafeContentWin, gmBrowser, commandName,
-                                commandFunc, accelKey, accelModifiers,
-                                accessKey) {
-    if (!GM_apiLeakCheck("GM_registerMenuCommand")) {
-      return;
-    }
-
-    gmBrowser.registerMenuCommand({
-      name: commandName,
-      accelKey: accelKey,
-      accelModifiers: accelModifiers,
-      accessKey: accessKey,
-      doCommand: commandFunc,
-      window: unsafeContentWin});
-  },
-
-  openInTab: function(safeContentWin, chromeWin, url) {
-    if (!GM_apiLeakCheck("GM_openInTab")) {
-      return undefined;
-    }
-
-    var newTab = chromeWin.openNewTabWith(
-      url, safeContentWin.document, null, null, null, null);
-    // Source:
-    // http://mxr.mozilla.org/mozilla-central/source/browser/base/content/browser.js#4448
-    var newWindow = chromeWin.gBrowser
-      .getBrowserForTab(newTab)
-      .docShell
-      .QueryInterface(Ci.nsIInterfaceRequestor)
-      .getInterface(Ci.nsIDOMWindow);
-    return newWindow;
   },
 
   evalInSandbox: function(code, codebase, sandbox, script) {
