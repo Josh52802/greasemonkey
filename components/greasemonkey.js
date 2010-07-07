@@ -84,7 +84,8 @@ GM_GreasemonkeyService.prototype = {
   // nsIObserver
   observe: function(aSubject, aTopic, aData) {
     if (aTopic == "app-startup") {
-      this.startup();
+      Cu.import("resource://greasemonkey/prefmanager.js");
+      Cu.import("resource://greasemonkey/utils.js");
     }
   },
 
@@ -95,11 +96,6 @@ GM_GreasemonkeyService.prototype = {
     if (scripts.length > 0) {
       this.injectScripts(scripts, url, wrappedContentWin, chromeWin, gmBrowser);
     }
-  },
-
-  startup: function() {
-    Cu.import("resource://greasemonkey/prefmanager.js");
-    Cu.import("resource://greasemonkey/utils.js");
   },
 
   shouldLoad: function(ct, cl, org, ctx, mt, ext) {
