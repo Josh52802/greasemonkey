@@ -110,35 +110,11 @@ GM_HTMLParser.prototype = {
       return true;
     }
 
-    else if (contentType === 'text/xml') {
-      this._parseFromXml(text);
-      return true;
-    }
-
     throw new Error("GM_HTMLParser: Unexpected Content-Type '" + contentType +
-                    "'. Expected 'text/html' or 'text/xml'");
+                    "'. Expected 'text/html'");
   },
 
-  // Parse XML using the DOM parser
-  _parseFromXml: function(text) {
-    var domParser = new XPCNativeWrapper(this._unsafeWin, "DOMParser()").DOMParser;
-    domParser = new domParser();
-
-    try {
-      var doc = domParser.parseFromString(text, "text/xml");
-    } catch (error) {
-      throw new Error("GM_HTMLParser: Error parsing XML. \n" + uneval(error));
-      // TODO : Error message needs revising. 
-    }
-
-    // Perform a clean up
-    domParser = null;
-
-    // Pass to our callback
-    this._onParse(doc);
-  },
-
-  // Uses a hidden iframe to parse HTML, as the native DOM Parser does not support HTML.
+  // Uses a hidden iframe to parse HTML
   _parseFromHtml: function(text) {
     var iframe = this._chromeWin.document.createElement('iframe');
 
