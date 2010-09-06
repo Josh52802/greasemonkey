@@ -1,9 +1,13 @@
-const CLASSNAME = "GM_GreasemonkeyService";
+// XPCOM info
+const DESCRIPTION = "GM_GreasemonkeyService";
 const CONTRACTID = "@greasemonkey.mozdev.org/greasemonkey-service;1";
-const CID = Components.ID("{77bf3650-1cd6-11da-8cd6-0800200c9a66}");
+const CLASSID = Components.ID("{77bf3650-1cd6-11da-8cd6-0800200c9a66}");
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
+const Cu = Components.utils;
+
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
 const appSvc = Cc["@mozilla.org/appshell/appShellService;1"]
                  .getService(Ci.nsIAppShellService);
@@ -11,12 +15,10 @@ const appSvc = Cc["@mozilla.org/appshell/appShellService;1"]
 const gmSvcFilename = Components.stack.filename;
 
 const maxJSVersion = (function getMaxJSVersion() {
-  var appInfo = Components
-      .classes["@mozilla.org/xre/app-info;1"]
-      .getService(Components.interfaces.nsIXULAppInfo);
-  var versionChecker = Components
-      .classes["@mozilla.org/xpcom/version-comparator;1"]
-      .getService(Components.interfaces.nsIVersionComparator);
+  var appInfo = Cc["@mozilla.org/xre/app-info;1"]
+      .getService(Ci.nsIXULAppInfo);
+  var versionChecker = Cc["@mozilla.org/xpcom/version-comparator;1"]
+      .getService(Ci.nsIVersionComparator);
 
   // Firefox 3.5 and higher supports 1.8.
   if (versionChecker.compare(appInfo.version, "3.5") >= 0) {
@@ -26,6 +28,8 @@ const maxJSVersion = (function getMaxJSVersion() {
   // Everything else supports 1.6.
   return "1.6";
 })();
+
+var gStartupHasRun = false;
 
 function alert(msg) {
   Cc["@mozilla.org/embedcomp/prompt-service;1"]
@@ -59,35 +63,55 @@ function GM_apiLeakCheck(apiName) {
   return true;
 }
 
-var greasemonkeyService = {
+
+function GM_GreasemonkeyService() {
+  this.wrappedJSObject = this;
+}
+
+GM_GreasemonkeyService.prototype = {
+  classDescription:  DESCRIPTION,
+  classID:           CLASSID,
+  contractID:        CONTRACTID,
+  _xpcom_categories: [{category: "app-startup",
+                       entry: DESCRIPTION,
+                       value: CONTRACTID,
+                       service: true},
+                      {category: "content-policy",
+                       entry: CONTRACTID,
+                       value: CONTRACTID,
+                       service: true}],
+
+  // nsISupports
+  QueryInterface: XPCOMUtils.generateQI([
+      Ci.nsIObserver,
+      Ci.nsISupports,
+      Ci.nsISupportsWeakReference,
+      Ci.gmIGreasemonkeyService,
+      Ci.nsIWindowMediatorListener,
+      Ci.nsIContentPolicy
+  ]),
+
   _config: null,
   get config() {
-    if (!this._config)
+    if (!this._config) {
+      // First guarantee instantiation and existence.  (So that anything,
+      // including stuff inside i.e. config._load(), can call
+      // i.e. config._changed().)
       this._config = new Config();
+      // Then initialize.
+      this._config.initialize();
+    }
     return this._config;
   },
   browserWindows: [],
 
-
-  // nsISupports
-  QueryInterface: function(aIID) {
-    if (!aIID.equals(Ci.nsIObserver) &&
-        !aIID.equals(Ci.nsISupports) &&
-        !aIID.equals(Ci.nsISupportsWeakReference) &&
-        !aIID.equals(Ci.gmIGreasemonkeyService) &&
-        !aIID.equals(Ci.nsIWindowMediatorListener) &&
-        !aIID.equals(Ci.nsIContentPolicy)) {
-      throw Components.results.NS_ERROR_NO_INTERFACE;
-    }
-
-    return this;
-  },
-
-
   // nsIObserver
   observe: function(aSubject, aTopic, aData) {
-    if (aTopic == "app-startup") {
-      this.startup();
+    switch (aTopic) {
+      case 'app-startup':
+      case 'profile-after-change':
+        this.startup();
+        break;
     }
   },
 
@@ -120,28 +144,31 @@ var greasemonkeyService = {
   },
 
   domContentLoaded: function(wrappedContentWin, chromeWin) {
-    var unsafeWin = wrappedContentWin.wrappedJSObject;
-    var unsafeLoc = new XPCNativeWrapper(unsafeWin, "location").location;
-    var href = new XPCNativeWrapper(unsafeLoc, "href").href;
-    var scripts = this.initScripts(href);
+    var url = wrappedContentWin.document.location.href;
+    var scripts = this.initScripts(url, wrappedContentWin, chromeWin);
 
     if (scripts.length > 0) {
-      this.injectScripts(scripts, href, unsafeWin, chromeWin);
+      this.injectScripts(scripts, url, wrappedContentWin, chromeWin);
     }
   },
 
-
   startup: function() {
+    if (gStartupHasRun) return;
+    gStartupHasRun = true;
+
     var loader = Cc["@mozilla.org/moz/jssubscript-loader;1"]
       .getService(Ci.mozIJSSubScriptLoader);
     loader.loadSubScript("chrome://global/content/XPCNativeWrapper.js");
     loader.loadSubScript("chrome://greasemonkey/content/prefmanager.js");
     loader.loadSubScript("chrome://greasemonkey/content/utils.js");
     loader.loadSubScript("chrome://greasemonkey/content/config.js");
+    loader.loadSubScript("chrome://greasemonkey/content/script.js");
+    loader.loadSubScript("chrome://greasemonkey/content/scriptrequire.js");
+    loader.loadSubScript("chrome://greasemonkey/content/scriptresource.js");
     loader.loadSubScript("chrome://greasemonkey/content/convert2RegExp.js");
     loader.loadSubScript("chrome://greasemonkey/content/miscapis.js");
     loader.loadSubScript("chrome://greasemonkey/content/xmlhttprequester.js");
-    //loggify(this, "GM_GreasemonkeyService");
+    loader.loadSubScript("chrome://greasemonkey/content/scriptdownloader.js");
   },
 
   shouldLoad: function(ct, cl, org, ctx, mt, ext) {
@@ -171,16 +198,11 @@ var greasemonkeyService = {
       dump("shouldload: " + cl.spec + "\n");
       dump("ignorescript: " + this.ignoreNextScript_ + "\n");
 
-      if (!this.ignoreNextScript_) {
-        if (!this.isTempScript(cl)) {
-          var winWat = Cc["@mozilla.org/embedcomp/window-watcher;1"]
-            .getService(Ci.nsIWindowWatcher);
-
-          if (winWat.activeWindow && winWat.activeWindow.GM_BrowserUI) {
-            winWat.activeWindow.GM_BrowserUI.startInstallScript(cl);
-            ret = Ci.nsIContentPolicy.REJECT_REQUEST;
-          }
-        }
+      if (!this.ignoreNextScript_
+        && !this.isTempScript(cl)
+        && GM_installUri(cl)
+      ) {
+        ret = Ci.nsIContentPolicy.REJECT_REQUEST;
       }
     }
 
@@ -213,15 +235,17 @@ var greasemonkeyService = {
     return file.parent.equals(tmpDir) && file.leafName != "newscript.user.js";
   },
 
-  initScripts: function(url) {
-    function testMatch(script) {
-      return script.enabled && script.matchesURL(url);
+  initScripts: function(url, wrappedContentWin, chromeWin) {
+    if (GM_prefRoot.getValue('enableScriptRefreshing')) {
+      this.config.updateModifiedScripts(wrappedContentWin, chromeWin);
     }
 
-    return GM_getConfig().getMatchingScripts(testMatch);
+    return this.config.getMatchingScripts(function(script) {
+          return GM_scriptMatchesUrlAndRuns(script, url)
+        });
   },
 
-  injectScripts: function(scripts, url, unsafeContentWin, chromeWin) {
+  injectScripts: function(scripts, url, wrappedContentWin, chromeWin) {
     var sandbox;
     var script;
     var logger;
@@ -230,14 +254,13 @@ var greasemonkeyService = {
     var xmlhttpRequester;
     var parser;
     var resources;
-    var safeWin = new XPCNativeWrapper(unsafeContentWin);
-    var safeDoc = safeWin.document;
+    var unsafeContentWin = wrappedContentWin.wrappedJSObject;
 
     // detect and grab reference to firebug console and context, if it exists
     var firebugConsole = this.getFirebugConsole(unsafeContentWin, chromeWin);
 
     for (var i = 0; script = scripts[i]; i++) {
-      sandbox = new Components.utils.Sandbox(safeWin);
+      sandbox = new Components.utils.Sandbox(wrappedContentWin);
 
       logger = new GM_ScriptLogger(script);
 
@@ -245,11 +268,12 @@ var greasemonkeyService = {
 
       storage = new GM_ScriptStorage(script);
       xmlhttpRequester = new GM_xmlhttpRequester(unsafeContentWin,
-                                                 appSvc.hiddenDOMWindow);
+                                                 appSvc.hiddenDOMWindow,
+                                                 url);
       parser = new GM_Parser(chromeWin, safeWin, unsafeContentWin);
       resources = new GM_Resources(script);
 
-      sandbox.window = safeWin;
+      sandbox.window = wrappedContentWin;
       sandbox.document = sandbox.window.document;
       sandbox.unsafeWindow = unsafeContentWin;
 
@@ -257,7 +281,9 @@ var greasemonkeyService = {
       sandbox.XPathResult = Ci.nsIDOMXPathResult;
 
       // add our own APIs
-      sandbox.GM_addStyle = function(css) { GM_addStyle(safeDoc, css) };
+      sandbox.GM_addStyle = function(css) {
+            GM_addStyle(wrappedContentWin.document, css);
+          };
       sandbox.GM_log = GM_hitch(logger, "log");
       sandbox.console = console;
       sandbox.GM_setValue = GM_hitch(storage, "setValue");
@@ -266,7 +292,8 @@ var greasemonkeyService = {
       sandbox.GM_listValues = GM_hitch(storage, "listValues");
       sandbox.GM_getResourceURL = GM_hitch(resources, "getResourceURL");
       sandbox.GM_getResourceText = GM_hitch(resources, "getResourceText");
-      sandbox.GM_openInTab = GM_hitch(this, "openInTab", safeWin, chromeWin);
+      sandbox.GM_openInTab = GM_hitch(
+          this, "openInTab", wrappedContentWin, chromeWin);
       sandbox.GM_xmlhttpRequest = GM_hitch(xmlhttpRequester,
                                            "contentStartRequest");
       sandbox.GM_registerMenuCommand = GM_hitch(this,
@@ -274,7 +301,7 @@ var greasemonkeyService = {
                                                 unsafeContentWin);
       sandbox.GM_parse = GM_hitch(parser, "parse");
 
-      sandbox.__proto__ = safeWin;
+      sandbox.__proto__ = wrappedContentWin;
 
       var contents = script.textContent;
 
@@ -327,18 +354,8 @@ var greasemonkeyService = {
       return undefined;
     }
 
-    var info = Cc["@mozilla.org/xre/app-info;1"]
-      .getService(Components.interfaces.nsIXULAppInfo);
-    if (parseFloat(info.version, 10) < 3.0) {
-      // Pre FF 3.0 wants the URL as the second argument.
-      var newTab = chromeWin.openNewTabWith(
-        url, safeContentWin.document.location.href, null, null, null, null);
-    } else {
-      // Post FF 3.0 wants the document as the second argument.
-      var newTab = chromeWin.openNewTabWith(
-        url, safeContentWin.document, null, null, null, null);
-    }
-
+    var newTab = chromeWin.openNewTabWith(
+      url, safeContentWin.document, null, null, null, null);
     // Source:
     // http://mxr.mozilla.org/mozilla-central/source/browser/base/content/browser.js#4448
     var newWindow = chromeWin.gBrowser
@@ -449,16 +466,9 @@ var greasemonkeyService = {
         return null;
       }
 
-      try {
-        if (!fbConsole.isEnabled(fbContext)) return null;
-      } catch (e) {
-        // FB 1.1 can't be enabled/disabled.  Function to check doesn't exist.
-        // Silently ignore.
-      }
+      if (!fbConsole.isEnabled(fbContext)) return null;
 
-      if (fbVersion < 1.2) {
-        return new chromeWin.FirebugConsole(fbContext, unsafeContentWin);
-      } else if (1.2 == fbVersion) {
+      if (1.2 == fbVersion) {
         var safeWin = new XPCNativeWrapper(unsafeContentWin);
 
         if (fbContext.consoleHandler) {
@@ -476,7 +486,7 @@ var greasemonkeyService = {
         dummyElm.parentNode.removeChild(dummyElm);
 
         return fbContext.consoleHandler.pop().handler;
-      } else if (1.3 == fbVersion || 1.4 == fbVersion) {
+      } else if (fbVersion >= 1.3) {
         fbConsole.injector.attachIfNeeded(fbContext, unsafeContentWin);
         return findActiveContext();
       }
@@ -484,75 +494,14 @@ var greasemonkeyService = {
       dump('Greasemonkey getFirebugConsole() error:\n'+uneval(e)+'\n');
     }
 
-	  return null;
+    return null;
   }
 };
 
-greasemonkeyService.wrappedJSObject = greasemonkeyService;
-
-
-
-/**
- * XPCOM Registration goop
- */
-var Module = new Object();
-
-Module.registerSelf = function(compMgr, fileSpec, location, type) {
-  compMgr = compMgr.QueryInterface(Ci.nsIComponentRegistrar);
-  compMgr.registerFactoryLocation(CID,
-                                  CLASSNAME,
-                                  CONTRACTID,
-                                  fileSpec,
-                                  location,
-                                  type);
-
-  var catMgr = Cc["@mozilla.org/categorymanager;1"]
-                 .getService(Ci.nsICategoryManager);
-
-  catMgr.addCategoryEntry("app-startup",
-                          CLASSNAME,
-                          CONTRACTID,
-                          true,
-                          true);
-
-  catMgr.addCategoryEntry("content-policy",
-                          CONTRACTID,
-                          CONTRACTID,
-                          true,
-                          true);
-};
-
-Module.getClassObject = function(compMgr, cid, iid) {
-  if (!cid.equals(CID)) {
-    throw Components.results.NS_ERROR_NOT_IMPLEMENTED;
-  }
-
-  if (!iid.equals(Ci.nsIFactory)) {
-    throw Components.results.NS_ERROR_NO_INTERFACE;
-  }
-
-  return Factory;
-};
-
-Module.canUnload = function(compMgr) {
-  return true;
-};
-
-
-var Factory = new Object();
-
-Factory.createInstance = function(outer, iid) {
-  if (outer != null) {
-    throw Components.results.NS_ERROR_NO_AGGREGATION;
-  }
-
-  return greasemonkeyService;
-};
-
-
-function NSGetModule(compMgr, fileSpec) {
-  return Module;
+if (XPCOMUtils.generateNSGetFactory) {
+  // Firefox >= 4
+  var NSGetFactory = XPCOMUtils.generateNSGetFactory([GM_GreasemonkeyService]);
+} else {
+  // Firefox <= 3.6.*
+  var NSGetModule = XPCOMUtils.generateNSGetModule([GM_GreasemonkeyService]);
 }
-
-//loggify(Module, "greasemonkeyService:Module");
-//loggify(Factory, "greasemonkeyService:Factory");

@@ -28,8 +28,8 @@ GM_BrowserUI.init = function() {
   this.menuCommanders = [];
   this.currentMenuCommander = null;
 
-  GM_listen(window, "load", GM_hitch(this, "chromeLoad"));
-  GM_listen(window, "unload", GM_hitch(this, "chromeUnload"));
+  window.addEventListener("load", GM_hitch(this, "chromeLoad"), false);
+  window.addEventListener("unload", GM_hitch(this, "chromeUnload"), false);
 };
 
 /**
@@ -37,38 +37,30 @@ GM_BrowserUI.init = function() {
  * listeners and wrapper objects.
  */
 GM_BrowserUI.chromeLoad = function(e) {
-  // get all required DOM elements
+  // Grab some DOM element references.
+  var appContent = document.getElementById("appcontent");
+  var sidebar = document.getElementById("sidebar");
+  var contextMenu = document.getElementById("contentAreaContextMenu");
+  var toolsMenu = document.getElementById("menu_ToolsPopup") ||
+      document.getElementById("taskPopup"); // seamonkey compat
+
+  // Store other DOM element references in this object, also for use elsewhere.
   this.tabBrowser = document.getElementById("content");
-  this.appContent = document.getElementById("appcontent");
-  this.sidebar = document.getElementById("sidebar");
-  this.contextMenu = document.getElementById("contentAreaContextMenu");
   this.statusImage = document.getElementById("gm-status-image");
   this.statusLabel = document.getElementById("gm-status-label");
-  this.statusPopup = document.getElementById("gm-status-popup");
   this.statusEnabledItem = document.getElementById("gm-status-enabled-item");
   this.generalMenuEnabledItem = document.getElementById("gm-general-menu-enabled-item");
-  this.toolsMenu = document.getElementById("menu_ToolsPopup");
   this.bundle = document.getElementById("gm-browser-bundle");
-
-  // seamonkey compat
-  if (!this.toolsMenu) {
-    this.toolsMenu = document.getElementById("taskPopup");
-  }
-
-  // songbird compat
-  if (!this.appContent && this.tabBrowser) {
-    this.appContent = this.tabBrowser.parentNode;
-  }
 
   // update visual status when enabled state changes
   this.enabledWatcher = GM_hitch(this, "refreshStatus");
   GM_prefRoot.watch("enabled", this.enabledWatcher);
 
   // hook various events
-  GM_listen(this.appContent, "DOMContentLoaded", GM_hitch(this, "contentLoad"));
-  GM_listen(this.sidebar, "DOMContentLoaded", GM_hitch(this, "contentLoad"));
-  GM_listen(this.contextMenu, "popupshowing", GM_hitch(this, "contextMenuShowing"));
-  GM_listen(this.toolsMenu, "popupshowing", GM_hitch(this, "toolsMenuShowing"));
+  appContent.addEventListener("DOMContentLoaded", GM_hitch(this, "contentLoad"), true);
+  sidebar.addEventListener("DOMContentLoaded", GM_hitch(this, "contentLoad"), true);
+  contextMenu.addEventListener("popupshowing", GM_hitch(this, "contextMenuShowing"), false);
+  toolsMenu.addEventListener("popupshowing", GM_hitch(this, "toolsMenuShowing"), false);
 
   // listen for clicks on the install bar
   Components.classes["@mozilla.org/observer-service;1"]
@@ -93,7 +85,7 @@ GM_BrowserUI.chromeLoad = function(e) {
   // reference this once, so that the getter is called at least once, and the
   // initialization routines will run, no matter what
   this.gmSvc.wrappedJSObject.config;
-  
+
   this.gmSvc.registerBrowser(this);
 };
 
@@ -127,31 +119,23 @@ GM_BrowserUI.openInTab = function(domWindow, url) {
  * it's menu items and activate them.
  */
 GM_BrowserUI.contentLoad = function(e) {
-  var safeWin;
-  var unsafeWin;
-  var href;
-  var commander;
+  if (!GM_getEnabled()) return;
 
-  if (!GM_getEnabled()) {
-    return;
-  }
-
-  safeWin = e.target.defaultView;
-  unsafeWin = safeWin.wrappedJSObject;
-  href = safeWin.location.href;
+  var safeWin = e.target.defaultView;
+  var unsafeWin = safeWin.wrappedJSObject;
+  var href = safeWin.location.href;
 
   if (GM_isGreasemonkeyable(href)) {
-    commander = this.getCommander(unsafeWin);
-
     // if this content load is in the focused tab, attach the menuCommaander
     if (unsafeWin == this.tabBrowser.selectedBrowser.contentWindow) {
+      var commander = this.getCommander(safeWin);
       this.currentMenuCommander = commander;
       this.currentMenuCommander.attach();
     }
 
-    this.gmSvc.domContentLoaded({ wrappedJSObject: unsafeWin }, window);
+    this.gmSvc.domContentLoaded(safeWin, window);
 
-    GM_listen(unsafeWin, "pagehide", GM_hitch(this, "contentUnload"));
+    safeWin.addEventListener("pagehide", GM_hitch(this, "contentUnload"), false);
   }
 
   // Show the greasemonkey install banner if we are navigating to a .user.js
@@ -171,45 +155,29 @@ GM_BrowserUI.contentLoad = function(e) {
 GM_BrowserUI.showInstallBanner = function(browser) {
   var greeting = this.bundle.getString("greeting.msg");
 
-  if (this.tabBrowser.showMessage) {
-    // Firefox 1.5 and lower
-    this.tabBrowser.showMessage(
-      browser,
-      "chrome://greasemonkey/content/icon_small.png",
-      greeting,
-      this.bundle.getString("greeting.btn"),
-      null /* default doc shell */,
-      "install-userscript",
-      null /* no popuup */,
-      "top",
-      true /* show close button */,
-      this.bundle.getString("greeting.btnAccess") /* access key */);
-  } else {
-    // Firefox 2.0+
-    var notificationBox = this.tabBrowser.getNotificationBox(browser);
+  var notificationBox = this.tabBrowser.getNotificationBox(browser);
 
-    // Remove existing notifications. Notifications get removed
-    // automatically onclick and on page navigation, but we need to remove
-    // them ourselves in the case of reload, or they stack up.
-    for (var i = 0, child; child = notificationBox.childNodes[i]; i++) {
-      if (child.getAttribute("value") == "install-userscript") {
-        notificationBox.removeNotification(child);
-      }
+  // Remove existing notifications. Notifications get removed
+  // automatically onclick and on page navigation, but we need to remove
+  // them ourselves in the case of reload, or they stack up.
+  for (var i = 0, child; child = notificationBox.childNodes[i]; i++) {
+    if (child.getAttribute("value") == "install-userscript") {
+      notificationBox.removeNotification(child);
     }
-
-    var notification = notificationBox.appendNotification(
-      greeting,
-      "install-userscript",
-      "chrome://greasemonkey/content/icon_small.png",
-      notificationBox.PRIORITY_WARNING_MEDIUM,
-      [{
-        label: this.bundle.getString("greeting.btn"),
-        accessKey: this.bundle.getString("greeting.btnAccess"),
-        popup: null,
-        callback: GM_hitch(this, "installCurrentScript")
-      }]
-    );
   }
+
+  var notification = notificationBox.appendNotification(
+    greeting,
+    "install-userscript",
+    "chrome://greasemonkey/skin/icon_small.png",
+    notificationBox.PRIORITY_WARNING_MEDIUM,
+    [{
+      label: this.bundle.getString("greeting.btn"),
+      accessKey: this.bundle.getString("greeting.btnAccess"),
+      popup: null,
+      callback: GM_hitch(this, "installCurrentScript")
+    }]
+  );
 };
 
 /**
@@ -220,7 +188,7 @@ GM_BrowserUI.startInstallScript = function(uri, timer) {
     // docs for nsicontentpolicy say we're not supposed to block, so short
     // timer.
     window.setTimeout(
-      function() { GM_BrowserUI.startInstallScript(uri, true) }, 0);
+      function() { GM_BrowserUI.startInstallScript(uri, true); }, 0);
 
     return;
   }
@@ -294,29 +262,27 @@ GM_BrowserUI.onLocationChange = function(a,b,c) {
  * avoid leaking it's memory.
  */
 GM_BrowserUI.contentUnload = function(e) {
-  if (e.persisted) {
+  if (e.persisted || !this.menuCommanders || 0 == this.menuCommanders.length) {
     return;
   }
 
   var unsafeWin = e.target.defaultView;
 
-  // remove the commander for this document
-  var commander = null;
-
   // looping over commanders rather than using getCommander because we need
   // the index into commanders.splice.
-  for (var i = 0; item = this.menuCommanders[i]; i++) {
-    if (item.win == unsafeWin) {
-
-      if (item.commander == this.currentMenuCommander) {
-        this.currentMenuCommander.detach();
-        this.currentMenuCommander = null;
-      }
-
-      this.menuCommanders.splice(i, 1);
-
-      break;
+  for (var i = 0, item; item = this.menuCommanders[i]; i++) {
+    if (item.win != unsafeWin) {
+      continue;
     }
+
+    if (item.commander == this.currentMenuCommander) {
+      this.currentMenuCommander.detach();
+      this.currentMenuCommander = null;
+    }
+
+    this.menuCommanders.splice(i, 1);
+
+    break;
   }
 };
 
@@ -338,8 +304,8 @@ GM_BrowserUI.chromeUnload = function() {
  * to show our context items.
  */
 GM_BrowserUI.contextMenuShowing = function() {
-  var contextItem = ge("view-userscript");
-  var contextSep = ge("install-userscript-sep");
+  var contextItem = document.getElementById("view-userscript");
+  var contextSep = document.getElementById("install-userscript-sep");
 
   var culprit = document.popupNode;
 
@@ -373,7 +339,7 @@ GM_BrowserUI.getUserScriptLinkUnderPointer = function() {
 };
 
 GM_BrowserUI.toolsMenuShowing = function() {
-  var installItem = ge("userscript-tools-install");
+  var installItem = document.getElementById("userscript-tools-install");
   var hidden = true;
 
   if (window._content && window._content.location &&
@@ -461,6 +427,7 @@ function GM_showPopup(aEvent) {
   }
 
   function appendScriptToPopup(script) {
+    if (script.needsUninstall) return;
     var mi = document.createElement("menuitem");
     mi.setAttribute("label", script.name);
     mi.script = script;
@@ -526,7 +493,7 @@ function GM_popupClicked(aEvent) {
     if (aEvent.button == 0) // left-click: toggle enabled state
       script.enabled =! script.enabled;
     else // right-click: open in editor
-      openInEditor(script);
+      GM_openInEditor(script);
 
     closeMenus(aEvent.target);
   }
@@ -539,24 +506,14 @@ function GM_popupClicked(aEvent) {
  */
 GM_BrowserUI.refreshStatus = function() {
   if (GM_getEnabled()) {
-    this.statusImage.src = "chrome://greasemonkey/content/icon_small.png";
+    this.statusImage.src = "chrome://greasemonkey/skin/icon_small.png";
     this.statusImage.tooltipText = this.bundle.getString("tooltip.enabled");
   } else {
-    this.statusImage.src = "chrome://greasemonkey/content/icon_small_disabled.png";
+    this.statusImage.src = "chrome://greasemonkey/skin/icon_small_disabled.png";
     this.statusImage.tooltipText = this.bundle.getString("tooltip.disabled");
   }
 
   this.statusImage.style.opacity = "1.0";
-};
-
-GM_BrowserUI.newUserScript = function() {
-  var windowWatcher = Components
-    .classes["@mozilla.org/embedcomp/window-watcher;1"]
-    .getService(Components.interfaces.nsIWindowWatcher);
-  windowWatcher.openWindow(
-    window, "chrome://greasemonkey/content/newscript.xul", null,
-    "chrome,dependent,centerscreen,resizable,dialog", null
-  );
 };
 
 GM_BrowserUI.showStatus = function(message, autoHide) {
@@ -657,15 +614,8 @@ GM_BrowserUI.installMenuItemClicked = function() {
 GM_BrowserUI.viewContextItemClicked = function() {
   var uri = GM_BrowserUI.getUserScriptLinkUnderPointer();
 
-  this.scriptDownloader_ = new ScriptDownloader(window, uri, this.bundle);
+  this.scriptDownloader_ = new GM_ScriptDownloader(window, uri, this.bundle);
   this.scriptDownloader_.startViewScript();
 };
 
-GM_BrowserUI.manageMenuItemClicked = function() {
-   GM_openUserScriptManager();
-};
-
-//loggify(GM_BrowserUI, "GM_BrowserUI");
-
-log("calling init...");
 GM_BrowserUI.init();

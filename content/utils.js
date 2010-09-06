@@ -1,20 +1,22 @@
 const GM_GUID = "{e4a8a97b-f2ed-450b-b12d-ee082ba24781}";
 
-// TODO: properly scope this constant
-const NAMESPACE = "http://youngpup.net/greasemonkey";
-
 var GM_consoleService = Components.classes["@mozilla.org/consoleservice;1"]
                         .getService(Components.interfaces.nsIConsoleService);
 
-function GM_isDef(thing) {
-  return typeof(thing) != "undefined";
-}
+var GM_stringBundle = Components
+    .classes["@mozilla.org/intl/stringbundle;1"]
+    .getService(Components.interfaces.nsIStringBundleService)
+    .createBundle("chrome://greasemonkey/locale/gm-browser.properties");
 
-function GM_getConfig() {
+function GM_getService() {
   return Components
     .classes["@greasemonkey.mozdev.org/greasemonkey-service;1"]
     .getService(Components.interfaces.gmIGreasemonkeyService)
-    .wrappedJSObject.config;
+    .wrappedJSObject;
+}
+
+function GM_getConfig() {
+  return GM_getService().config;
 }
 
 function GM_hitch(obj, meth) {
@@ -36,16 +38,6 @@ function GM_hitch(obj, meth) {
     // list of static and dynamic arguments.
     return obj[meth].apply(obj, args);
   };
-}
-
-function GM_listen(source, event, listener, opt_capture) {
-  Components.utils.lookupMethod(source, "addEventListener")(
-    event, listener, opt_capture);
-}
-
-function GM_unlisten(source, event, listener, opt_capture) {
-  Components.utils.lookupMethod(source, "removeEventListener")(
-    event, listener, opt_capture);
 }
 
 /**
@@ -74,50 +66,31 @@ function GM_log(message, force) {
   }
 }
 
-function GM_openUserScriptManager() {
-  var win = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                      .getService(Components.interfaces.nsIWindowMediator)
-                      .getMostRecentWindow("Greasemonkey:Manage");
-  if (win) {
-    win.focus();
-  } else {
-    var parentWindow = (!window.opener || window.opener.closed) ?
-      window : window.opener;
-    parentWindow.openDialog("chrome://greasemonkey/content/manage.xul",
-      "_blank", "resizable,dialog=no,centerscreen");
-  }
-}
-
 // TODO: this stuff was copied wholesale and not refactored at all. Lots of
 // the UI and Config rely on it. Needs rethinking.
 
-function openInEditor(script) {
-  var file = script.editFile;
-  var stringBundle = Components
-    .classes["@mozilla.org/intl/stringbundle;1"]
-    .getService(Components.interfaces.nsIStringBundleService)
-    .createBundle("chrome://greasemonkey/locale/gm-browser.properties");
-  var editor = getEditor(stringBundle);
+function GM_openInEditor(script) {
+  var editor = GM_getEditor();
   if (!editor) {
     // The user did not choose an editor.
     return;
   }
 
   try {
-    launchApplicationWithDoc(editor, file);
+    GM_launchApplicationWithDoc(editor, script.file);
   } catch (e) {
     // Something may be wrong with the editor the user selected. Remove so that
     // next time they can pick a different one.
-    alert(stringBundle.GetStringFromName("editor.could_not_launch") + "\n" + e);
+    alert(GM_stringBundle.GetStringFromName("editor.could_not_launch") + "\n" + e);
     GM_prefRoot.remove("editor");
     throw e;
   }
 }
 
-function getEditor(stringBundle) {
+function GM_getEditor(change) {
   var editorPath = GM_prefRoot.getValue("editor");
 
-  if (editorPath) {
+  if (!change && editorPath) {
     GM_log("Found saved editor preference: " + editorPath);
 
     var editor = Components.classes["@mozilla.org/file/local;1"]
@@ -143,7 +116,7 @@ function getEditor(stringBundle) {
     var filePicker = Components.classes["@mozilla.org/filepicker;1"]
                                .createInstance(nsIFilePicker);
 
-    filePicker.init(window, stringBundle.GetStringFromName("editor.prompt"),
+    filePicker.init(window, GM_stringBundle.GetStringFromName("editor.prompt"),
                     nsIFilePicker.modeOpen);
     filePicker.appendFilters(nsIFilePicker.filterApplication);
     filePicker.appendFilters(nsIFilePicker.filterAll);
@@ -160,19 +133,19 @@ function getEditor(stringBundle) {
       GM_prefRoot.setValue("editor", filePicker.file.path);
       return filePicker.file;
     } else {
-      alert(stringBundle.GetStringFromName("editor.please_pick_executable"));
+      alert(GM_stringBundle.GetStringFromName("editor.please_pick_executable"));
     }
   }
 }
 
-function launchApplicationWithDoc(appFile, docFile) {
+function GM_launchApplicationWithDoc(appFile, docFile) {
   var args=[docFile.path];
 
   // For the mac, wrap with a call to "open".
   var xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"]
                              .getService(Components.interfaces.nsIXULRuntime);
   if ("Darwin"==xulRuntime.OS) {
-    args=["-a", appFile.path, docFile.path]
+    args = ["-a", appFile.path, docFile.path];
 
     appFile = Components.classes["@mozilla.org/file/local;1"]
                         .createInstance(Components.interfaces.nsILocalFile);
@@ -186,14 +159,14 @@ function launchApplicationWithDoc(appFile, docFile) {
   process.run(false, args, args.length);
 }
 
-function parseScriptName(sourceUri) {
+function GM_parseScriptName(sourceUri) {
   var name = sourceUri.spec;
   name = name.substring(0, name.indexOf(".user.js"));
   name = name.substring(name.lastIndexOf("/") + 1);
   return name;
 }
 
-function getTempFile() {
+function GM_getTempFile() {
   var file = Components.classes["@mozilla.org/file/directory_service;1"]
         .getService(Components.interfaces.nsIProperties)
         .get("TmpD", Components.interfaces.nsILocalFile);
@@ -207,7 +180,7 @@ function getTempFile() {
   return file;
 }
 
-function getBinaryContents(file) {
+function GM_getBinaryContents(file) {
     var ioService = Components.classes["@mozilla.org/network/io-service;1"]
                               .getService(Components.interfaces.nsIIOService);
 
@@ -223,10 +196,9 @@ function getBinaryContents(file) {
     return bytes;
 }
 
-function getContents(file, charset) {
-  if( !charset ) {
-    charset = "UTF-8"
-  }
+function GM_getContents(file, charset) {
+  if (!charset) charset = "UTF-8";
+
   var ioService=Components.classes["@mozilla.org/network/io-service;1"]
     .getService(Components.interfaces.nsIIOService);
   var scriptableStream=Components
@@ -239,7 +211,13 @@ function getContents(file, charset) {
   unicodeConverter.charset = charset;
 
   var channel = ioService.newChannelFromURI(GM_getUriFromFile(file));
-  var input=channel.open();
+  try {
+    var input=channel.open();
+  } catch (e) {
+    GM_logError(new Error("Could not open file: " + file.path));
+    return "";
+  }
+
   scriptableStream.init(input);
   var str=scriptableStream.read(input.available());
   scriptableStream.close();
@@ -252,7 +230,7 @@ function getContents(file, charset) {
   }
 }
 
-function getWriteStream(file) {
+function GM_getWriteStream(file) {
   var stream = Components.classes["@mozilla.org/network/file-output-stream;1"]
                          .createInstance(Components.interfaces.nsIFileOutputStream);
 
@@ -267,6 +245,7 @@ function GM_getUriFromFile(file) {
                    .newFileURI(file);
 }
 
+// Todo: replace with nsIVersionComparator?
 /**
  * Compares two version numbers
  *
@@ -302,83 +281,29 @@ function GM_compareVersions(aV1, aV2) {
   return 0;
 }
 
-/**
- * Takes the place of the traditional prompt() function which became broken
- * in FF 1.0.1. :(
- */
-function gmPrompt(msg, defVal, title) {
-  var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-                                .getService(Components.interfaces.nsIPromptService);
-  var result = {value:defVal};
-
-  if (promptService.prompt(null, title, msg, result, null, {value:0})) {
-    return result.value;
-  }
-  else {
-    return null;
-  }
-}
-
-function ge(id) {
-  return window.document.getElementById(id);
-}
-
-
-function dbg(o) {
-  var s = "";
-  var i = 0;
-
-  for (var p in o) {
-    s += p + ":" + o[p] + "\n";
-
-    if (++i % 15 == 0) {
-      alert(s);
-      s = "";
-    }
-  }
-
-  alert(s);
-}
-
-function delaydbg(o) {
-  setTimeout(function() {dbg(o);}, 1000);
-}
-
-function delayalert(s) {
-  setTimeout(function() {alert(s);}, 1000);
-}
-
 function GM_isGreasemonkeyable(url) {
   var scheme = Components.classes["@mozilla.org/network/io-service;1"]
                .getService(Components.interfaces.nsIIOService)
                .extractScheme(url);
 
-  if ("http" == scheme) return true;
-  if ("https" == scheme) return true;
-  if ("ftp" == scheme) return true;
-  if ("data" == scheme) return true;
-
-  if ("file" == scheme) {
-    return GM_prefRoot.getValue('fileIsGreaseable');
-  }
-
-  if ("about" == scheme) {
-    // Always allow "about:blank".
-    if (/^about:blank/.test(url)) return true;
-
-    // Conditionally allow the rest of "about:".
-    return GM_prefRoot.getValue('aboutIsGreaseable');
+  switch (scheme) {
+    case "http":
+    case "https":
+    case "ftp":
+    case "data":
+      return true;
+    case "about":
+      // Always allow "about:blank".
+      if (/^about:blank/.test(url)) return true;
+      // Conditionally allow the rest of "about:".
+      return GM_prefRoot.getValue('aboutIsGreaseable');
+    case "file":
+      return GM_prefRoot.getValue('fileIsGreaseable');
+    case "unmht":
+      return GM_prefRoot.getValue('unmhtIsGreaseable');
   }
 
   return false;
-}
-
-function GM_isFileScheme(url) {
-  var scheme = Components.classes["@mozilla.org/network/io-service;1"]
-               .getService(Components.interfaces.nsIIOService)
-               .extractScheme(url);
-
-  return scheme == "file";
 }
 
 function GM_getEnabled() {
@@ -389,56 +314,111 @@ function GM_setEnabled(enabled) {
   GM_prefRoot.setValue("enabled", enabled);
 }
 
+function GM_uriFromUrl(url, baseUrl) {
+  var ioService = Components.classes["@mozilla.org/network/io-service;1"]
+                                     .getService(Components.interfaces.nsIIOService);
+  var baseUri = null;
+  if (baseUrl) baseUri = GM_uriFromUrl(baseUrl);
+  try {
+    return ioService.newURI(url, null, baseUri);
+  } catch (e) {
+    return null;
+  }
+}
+GM_uriFromUrl = GM_memoize(GM_uriFromUrl);
 
-/**
- * Logs a message to the console. The message can have python style %s
- * thingers which will be interpolated with additional parameters passed.
- */
-function log(message) {
-  if (GM_prefRoot.getValue("logChrome", false)) {
-    logf.apply(null, arguments);
+// UTF-8 encodes input, SHA-1 hashes it and returns the 40-char hex version.
+function GM_sha1(unicode) {
+  var unicodeConverter = Components
+      .classes["@mozilla.org/intl/scriptableunicodeconverter"]
+      .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
+  unicodeConverter.charset = "UTF-8";
+
+  var data = unicodeConverter.convertToByteArray(unicode, {});
+  var ch = Components.classes["@mozilla.org/security/hash;1"]
+      .createInstance(Components.interfaces.nsICryptoHash);
+  ch.init(ch.SHA1);
+  ch.update(data, data.length);
+  var hash = ch.finish(false); // hash as raw octets
+
+  var hex = [];
+  for (var i = 0; i < hash.length; i++) {
+    hex.push( ("0" + hash.charCodeAt(i).toString(16)).slice(-2) );
+  }
+  return hex.join('');
+}
+GM_sha1 = GM_memoize(GM_sha1);
+
+GM_scriptDirCache = null;
+function GM_scriptDir() {
+  if (!GM_scriptDirCache) {
+    GM_scriptDirCache = Components
+        .classes["@mozilla.org/file/directory_service;1"]
+        .getService(Components.interfaces.nsIProperties)
+        .get("ProfD", Components.interfaces.nsILocalFile);
+    GM_scriptDirCache.append("gm_scripts");
+  }
+  return GM_scriptDirCache.clone();
+}
+
+function GM_installUri(uri) {
+  var win = Components.classes['@mozilla.org/appshell/window-mediator;1']
+    .getService(Components.interfaces.nsIWindowMediator)
+    .getMostRecentWindow("navigator:browser");
+  if (win && win.GM_BrowserUI) {
+    win.GM_BrowserUI.startInstallScript(uri);
+    return true;
+  }
+  return false;
+}
+
+function GM_scriptMatchesUrlAndRuns(script, url) {
+  return !script.pendingExec.length
+      && script.enabled
+      && !script.needsUninstall
+      && script.matchesURL(url);
+}
+
+// Decorate a function with a memoization wrapper, with a limited-size cache
+// to reduce peak memory utilization.  Simple usage:
+//
+// function foo(arg1, arg2) { /* complex operation */ }
+// foo = GM_memoize(foo);
+//
+// The memoized function may have any number of arguments, but they must be
+// be serializable, and uniquely.  It's safest to use this only on functions
+// that accept primitives.
+function GM_memoize(func, limit) {
+  limit = limit || 3000;
+  var cache = {__proto__: null};
+  var keylist = [];
+
+  return function(a) {
+    var args = Array.prototype.slice.call(arguments);
+    var key = uneval(args);
+    if (key in cache) return cache[key];
+
+    var result = func.apply(null, args);
+
+    cache[key] = result;
+
+    if (keylist.push(key) > limit) delete cache[keylist.shift()];
+
+    return result;
   }
 }
 
-function logf(message) {
-  for (var i = 1; i < arguments.length; i++) {
-    message = message.replace(/\%s/, arguments[i]);
-  }
-
-  dump(message + "\n");
+function GM_newUserScript() {
+  var windowWatcher = Components
+    .classes["@mozilla.org/embedcomp/window-watcher;1"]
+    .getService(Components.interfaces.nsIWindowWatcher);
+  windowWatcher.openWindow(
+    window, "chrome://greasemonkey/content/newscript.xul", null,
+    "chrome,dependent,centerscreen,resizable,dialog", null
+  );
 }
 
-/**
- * Loggifies an object. Every method of the object will have it's entrance,
- * any parameters, any errors, and it's exit logged automatically.
- */
-function loggify(obj, name) {
-  for (var p in obj) {
-    if (typeof obj[p] == "function") {
-      obj[p] = gen_loggify_wrapper(obj[p], name, p);
-    }
-  }
-}
-
-function gen_loggify_wrapper(meth, objName, methName) {
-  return function() {
-     var retVal;
-    //var args = new Array(arguments.length);
-    var argString = "";
-    for (var i = 0; i < arguments.length; i++) {
-      //args[i] = arguments[i];
-      argString += arguments[i] + (((i+1)<arguments.length)? ", " : "");
-    }
-
-    log("> %s.%s(%s)", objName, methName, argString); //args.join(", "));
-
-    try {
-      return retVal = meth.apply(this, arguments);
-    } finally {
-      log("< %s.%s: %s",
-          objName,
-          methName,
-          (typeof retVal == "undefined" ? "void" : retVal));
-    }
-  }
+// Open the add-ons manager and show the installed user scripts.
+if (typeof GM_OpenScriptsMgr == "undefined") {
+  function GM_OpenScriptsMgr() { BrowserOpenAddonsMgr('userscripts'); }
 }

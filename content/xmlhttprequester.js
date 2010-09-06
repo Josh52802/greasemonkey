@@ -1,6 +1,7 @@
-function GM_xmlhttpRequester(unsafeContentWin, chromeWindow) {
+function GM_xmlhttpRequester(unsafeContentWin, chromeWindow, originUrl) {
   this.unsafeContentWin = unsafeContentWin;
   this.chromeWindow = chromeWindow;
+  this.originUrl = originUrl;
 }
 
 // this function gets called by user scripts in content security scope to
@@ -18,23 +19,18 @@ GM_xmlhttpRequester.prototype.contentStartRequest = function(details) {
 
   GM_log("> GM_xmlhttpRequest.contentStartRequest");
 
-  // Store this value by looking at it exactly once, and guaranteeing (via null
-  // prepend) that it is a string, and not an object that might play tricks
-  // with multiple .toString() calls.
-  var url = '' + details.url;
-
   try {
-    var ioService = Components.classes["@mozilla.org/network/io-service;1"]
-                    .getService(Components.interfaces.nsIIOService);
-    var scheme = ioService.extractScheme(url);
+    // Validate and parse the (possibly relative) given URL.
+    var uri = GM_uriFromUrl(details.url, this.originUrl);
+    var url = uri.spec;
   } catch (e) {
     // A malformed URL won't be parsed properly.
-    throw new Error('Invalid URL: '+url);
+    throw new Error("Invalid URL: " + details.url);
   }
 
   // This is important - without it, GM_xmlhttpRequest can be used to get
   // access to things like files and chrome. Careful.
-  switch (scheme) {
+  switch (uri.scheme) {
     case "http":
     case "https":
     case "ftp":
@@ -42,7 +38,7 @@ GM_xmlhttpRequester.prototype.contentStartRequest = function(details) {
         GM_hitch(this, "chromeStartRequest", url, details, req)();
       break;
     default:
-      throw new Error("Invalid url: " + url);
+      throw new Error("Disallowed scheme in URL: " + details.url);
   }
 
   GM_log("< GM_xmlhttpRequest.contentStartRequest");
@@ -65,15 +61,21 @@ function(safeUrl, details, req) {
   this.setupRequestEvent(this.unsafeContentWin, req, "onreadystatechange",
                          details);
 
-  req.open(details.method, safeUrl);
+  req.mozBackgroundRequest = !!details.mozBackgroundRequest;
+
+  req.open(details.method, safeUrl, true, details.user || "", details.password || "");
 
   if (details.overrideMimeType) {
     req.overrideMimeType(details.overrideMimeType);
   }
 
   if (details.headers) {
-    for (var prop in details.headers) {
-      req.setRequestHeader(prop, details.headers[prop]);
+    var headers = details.headers;
+
+    for (var prop in headers) {
+      if (Object.prototype.hasOwnProperty.call(headers, prop)) {
+        req.setRequestHeader(prop, headers[prop]);
+      }
     }
   }
 
@@ -93,7 +95,7 @@ function(safeUrl, details, req) {
   }
 
   GM_log("< GM_xmlhttpRequest.chromeStartRequest");
-}
+};
 
 // arranges for the specified 'event' on xmlhttprequest 'req' to call the
 // method by the same name which is a property of 'details' in the content
@@ -131,7 +133,7 @@ function(unsafeContentWin, req, event, details) {
         .setTimeout(function(){details[event](responseState);}, 0);
 
       GM_log("< GM_xmlhttpRequester -- callback for " + event);
-    }
+    };
   }
 
   GM_log("< GM_xmlhttpRequester.setupRequestEvent");
