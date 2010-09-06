@@ -82,40 +82,33 @@ GM_HTMLParser.prototype = {
   _unsafeWin: null,
 
   // Contains the callback function which we will pass the document
-  callback: null,
+  _callback: null,
 
   // The main interface of the API
-  HTMLParse: function(text, contentType) {
+  HTMLParse: function(text, callback) {
     if (!GM_apiLeakCheck("HTMLParse")) {
       return false;
     }
 
-    if ('string' !== typeof text)
+    if ('string' !== typeof text) {
       throw new Error('GM_HTMLParser: Expecting first arguments as a string. Instead found: ' +
                       typeof text);
-
-    this.callback = arguments[arguments.length - 1];
-    if ('function' !== typeof this.callback)
-      throw new Error('GM_HTMLParser: Expecting last argument as a function. Instead found: ' +
-                      typeof this.callback);
-
-    if (this.callback === contentType)
-      contentType = null;
-
-    contentType = typeof contentType === 'string' ? contentType.toLowerCase() :
-                  'text/html';
-
-    if (contentType === 'text/html') {
-      this._parseFromHtml(text);
-      return true;
     }
+
+    if ('function' !== typeof callback) {
+      throw new Error('GM_HTMLParser: Expecting second argument as a function. Instead found: ' +
+                      typeof callback);
+    }
+
+    this._callback = callback;
+    this._parseFromHTML(text);
 
     throw new Error("GM_HTMLParser: Unexpected Content-Type '" + contentType +
                     "'. Expected 'text/html'");
   },
 
   // Uses a hidden iframe to parse HTML
-  _parseFromHtml: function(text) {
+  _parseFromHTML: function(text) {
     var iframe = this._chromeWin.document.createElement('iframe');
 
     // Making sure we are secure and hidden
@@ -179,8 +172,8 @@ GM_HTMLParser.prototype = {
     var self = this;
     new XPCNativeWrapper(this._unsafeWin, "setTimeout()")
         .setTimeout(function(doc) {
-      self.callback.call(self._safeWin, doc);
-      self.callback = null;
+      self._callback.call(self._safeWin, doc);
+      self._callback = null;
     }, 0, doc);
   }
 };
