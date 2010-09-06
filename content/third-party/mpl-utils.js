@@ -63,13 +63,13 @@ function GM_openFolder(aFile) {
  * Based upon Mozilla's MicrosummaryResource from
  * http://mxr.mozilla.org/mozilla/source/browser/components/microsummaries/src/nsMicrosummaryService.js
  */
-function GM_HTMLParser(win, safeWin, unsafeWin) {
+function GM_HtmlParser(win, safeWin, unsafeWin) {
   this._chromeWin = win;
   this._safeWin = safeWin;
   this._unsafeWin = unsafeWin;
 }
 
-GM_HTMLParser.prototype = {
+GM_HtmlParser.prototype = {
   // Contains refernce to the chrome window, where we put our iframe
   _chromeWin: null,
 
@@ -85,30 +85,30 @@ GM_HTMLParser.prototype = {
   _callback: null,
 
   // The main interface of the API
-  HTMLParse: function(text, callback) {
-    if (!GM_apiLeakCheck("HTMLParse")) {
+  parse: function(text, callback) {
+    if (!GM_apiLeakCheck("GM_parseHtml")) {
       return false;
     }
 
     if ('string' !== typeof text) {
-      throw new Error('GM_HTMLParser: Expecting first arguments as a string. Instead found: ' +
+      throw new Error('GM_parseHtml: Expecting first arguments as a string. Instead found: ' +
                       typeof text);
     }
 
     if ('function' !== typeof callback) {
-      throw new Error('GM_HTMLParser: Expecting second argument as a function. Instead found: ' +
+      throw new Error('GM_parseHtml: Expecting second argument as a function. Instead found: ' +
                       typeof callback);
     }
 
     this._callback = callback;
-    this._parseFromHTML(text);
+    this._parseFromHtml(text);
 
-    throw new Error("GM_HTMLParser: Unexpected Content-Type '" + contentType +
+    throw new Error("GM_parseHtml: Unexpected Content-Type '" + contentType +
                     "'. Expected 'text/html'");
   },
 
   // Uses a hidden iframe to parse HTML
-  _parseFromHTML: function(text) {
+  _parseFromHtml: function(text) {
     var iframe = this._chromeWin.document.createElement('iframe');
 
     // Making sure we are secure and hidden

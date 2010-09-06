@@ -270,7 +270,7 @@ GM_GreasemonkeyService.prototype = {
       xmlhttpRequester = new GM_xmlhttpRequester(unsafeContentWin,
                                                  appSvc.hiddenDOMWindow,
                                                  url);
-      parser = new GM_HTMLParser(chromeWin, safeWin, unsafeContentWin);
+      parser = new GM_HtmlParser(chromeWin, safeWin, unsafeContentWin);
       resources = new GM_Resources(script);
 
       sandbox.window = wrappedContentWin;
@@ -299,7 +299,7 @@ GM_GreasemonkeyService.prototype = {
       sandbox.GM_registerMenuCommand = GM_hitch(this,
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
-      sandbox.GM_HTMLParser = GM_hitch(parser, "HTMLParse");
+      sandbox.GM_parseHtml = GM_hitch(parser, "parse");
 
       sandbox.__proto__ = wrappedContentWin;
 
