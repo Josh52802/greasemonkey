@@ -299,7 +299,7 @@ GM_GreasemonkeyService.prototype = {
       sandbox.GM_registerMenuCommand = GM_hitch(this,
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
-      sandbox.GM_HTMLParser = GM_hitch(parser, "HTMLParser");
+      sandbox.GM_HTMLParser = GM_hitch(parser, "HTMLParse");
 
       sandbox.__proto__ = wrappedContentWin;
 

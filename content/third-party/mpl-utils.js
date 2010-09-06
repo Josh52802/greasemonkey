@@ -85,18 +85,18 @@ GM_HTMLParser.prototype = {
   callback: null,
 
   // The main interface of the API
-  parse: function(text, contentType) {
-    if (!GM_apiLeakCheck("GM_parse")) {
+  HTMLParse: function(text, contentType) {
+    if (!GM_apiLeakCheck("HTMLParse")) {
       return false;
     }
 
     if ('string' !== typeof text)
-      throw new Error('GM_Parser: Expecting first arguments as a string. Instead found: ' +
+      throw new Error('GM_HTMLParser: Expecting first arguments as a string. Instead found: ' +
                       typeof text);
 
     this.callback = arguments[arguments.length - 1];
     if ('function' !== typeof this.callback)
-      throw new Error('GM_Parser: Expecting last argument as a function. Instead found: ' +
+      throw new Error('GM_HTMLParser: Expecting last argument as a function. Instead found: ' +
                       typeof this.callback);
 
     if (this.callback === contentType)
@@ -115,7 +115,7 @@ GM_HTMLParser.prototype = {
       return true;
     }
 
-    throw new Error("GM_Parser: Unexpected Content-Type '" + contentType +
+    throw new Error("GM_HTMLParser: Unexpected Content-Type '" + contentType +
                     "'. Expected 'text/html' or 'text/xml'");
   },
 
@@ -127,7 +127,7 @@ GM_HTMLParser.prototype = {
     try {
       var doc = domParser.parseFromString(text, "text/xml");
     } catch (error) {
-      throw new Error("GM_Parser: Error parsing XML. \n" + uneval(error));
+      throw new Error("GM_HTMLParser: Error parsing XML. \n" + uneval(error));
       // TODO : Error message needs revising. 
     }
 
