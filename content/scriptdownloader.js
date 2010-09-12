@@ -7,10 +7,7 @@ GM_ScriptDownloader = function(win, uri, bundle, ctxWin) {
   this.win_ = win;
   this.uri_ = uri;
   this.bundle_ = bundle;
-
-  // The window in which the script has been opened. Defaults to current tab.
-  this.contextWindow_ = ctxWin || content;
-
+  this.contextWin_ = ctxWin;
   this.req_ = null;
   this.script = null;
   this.depQueue_ = [];
@@ -50,15 +47,24 @@ GM_ScriptDownloader.prototype.startDownload = function() {
 };
 
 GM_ScriptDownloader.prototype.checkContentTypeBeforeDownload = function () {
-  // If there is a 'Content-Type' header and it contains 'text/html',
-  // then do not install the file, and display it instead.
-  if (this.req_.readyState == 2 && /text\/html/i.test(this.req_.getResponseHeader("Content-Type"))) {
-    this.req_.abort();
-    this.hideFetchMsg();
+  if (this.req_.readyState == 2) {
+    var matchingTab = GM_getTabForBrowser(this.contextWin_);
 
-    GM_getService().ignoreNextScript();
-    this.contextWindow_.location.href = this.uri_.spec;
-    return;
+    // If there is a 'Content-Type' header and it contains 'text/html',
+    // then do not install the file, and display it instead.
+    if (/text\/html/i.test(this.req_.getResponseHeader("Content-Type"))) {
+      this.req_.abort();
+      this.hideFetchMsg();
+
+      GM_getService().ignoreNextScript();
+
+      if (matchingTab)
+        this.contextWin_.loadURI(this.uri_.spec);
+      else
+        content.location.href = this.uri_.spec;
+    } else if (matchingTab) {
+      this.win_.gBrowser.removeTab(matchingTab);
+    }
  }
 };
 
@@ -66,10 +72,6 @@ GM_ScriptDownloader.prototype.handleScriptDownloadComplete = function() {
   this.hideFetchMsg();
 
   try {
-    // If the script has been opened in a new tab, close that tab.
-    if (this.contextWindow_ != content) {
-      this.contextWindow_.close();
-    }
     // If loading from file, status might be zero on success
     if (this.req_.status != 200 && this.req_.status != 0) {
       // NOTE: Unlocalized string

@@ -422,3 +422,23 @@ function GM_newUserScript() {
 if (typeof GM_OpenScriptsMgr == "undefined") {
   function GM_OpenScriptsMgr() { BrowserOpenAddonsMgr('userscripts'); }
 }
+
+function GM_getTabForBrowser(browser) {
+  var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+      .getService(Components.interfaces.nsIWindowMediator);
+  var browserEnumerator = wm.getEnumerator("navigator:browser");
+
+  // Check each browser instance for our URL
+  while (browserEnumerator.hasMoreElements()) {
+    var browserWin = browserEnumerator.getNext();
+    var tabbrowser = browserWin.gBrowser;
+
+    // Check each tab of this browser instance
+    for (var i = 0, len = tabbrowser.browsers.length; i < len; ++i) {
+      if (tabbrowser.getBrowserAtIndex(i) == browser)
+        return tabbrowser.tabContainer.childNodes[i];
+    }
+  }
+
+  return null;
+}
