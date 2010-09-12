@@ -35,20 +35,31 @@ GM_ScriptDownloader.prototype.startDownload = function() {
 
   this.win_.GM_BrowserUI.showStatus("Fetching user script", false);
 
-  Components.classes["@greasemonkey.mozdev.org/greasemonkey-service;1"]
-    .getService().wrappedJSObject
-    .ignoreNextScript();
+  GM_getService().ignoreNextScript();
 
   this.req_ = new XMLHttpRequest();
   this.req_.overrideMimeType("text/plain");
   this.req_.open("GET", this.uri_.spec, true);
+  this.req_.onreadystatechange = GM_hitch(this, "checkContentTypeBeforeDownload");
   this.req_.onload = GM_hitch(this, "handleScriptDownloadComplete");
   this.req_.send(null);
 };
 
+GM_ScriptDownloader.prototype.checkContentTypeBeforeDownload = function () {
+  // If there is a 'Content-Type' header and it contains 'text/html',
+  // then do not install the file, and display it instead.
+  if (this.req_.readyState == 2 && /text\/html/i.test(this.req_.getResponseHeader("Content-Type"))) {
+    this.req_.abort();
+    this.hideFetchMsg();
+
+    GM_getService().ignoreNextScript();
+    content.location.href = this.uri_.spec;
+    return;
+ }
+};
+
 GM_ScriptDownloader.prototype.handleScriptDownloadComplete = function() {
-  this.win_.GM_BrowserUI.refreshStatus();
-  this.win_.GM_BrowserUI.hideStatusImmediately();
+  this.hideFetchMsg();
 
   try {
     // If loading from file, status might be zero on success
@@ -255,6 +266,11 @@ GM_ScriptDownloader.prototype.showInstallDialog = function(timer) {
   this.win_.openDialog("chrome://greasemonkey/content/install.xul", "",
                        "chrome,centerscreen,modal,dialog,titlebar,resizable",
                        this);
+};
+
+GM_ScriptDownloader.prototype.hideFetchMsg = function() {
+  this.win_.GM_BrowserUI.refreshStatus();
+  this.win_.GM_BrowserUI.hideStatusImmediately();
 };
 
 GM_ScriptDownloader.prototype.showScriptView = function() {
