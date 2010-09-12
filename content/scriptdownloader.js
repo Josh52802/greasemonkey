@@ -46,16 +46,24 @@ GM_ScriptDownloader.prototype.startDownload = function() {
 };
 
 GM_ScriptDownloader.prototype.checkContentTypeBeforeDownload = function () {
-  // If there is a 'Content-Type' header and it contains 'text/html',
-  // then do not install the file, and display it instead.
-  if (this.req_.readyState == 2 && /text\/html/i.test(this.req_.getResponseHeader("Content-Type"))) {
-    this.req_.abort();
-    this.hideFetchMsg();
+  if (this.req_.readyState == 2) {
+    var matchingTab = GM_getTabByUrl("about:blank");
 
-    GM_getService().ignoreNextScript();
-    content.location.href = this.uri_.spec;
-    return;
- }
+    // If there is a 'Content-Type' header and it contains 'text/html',
+    // then do not install the file, and display it instead.
+    if (/text\/html/i.test(this.req_.getResponseHeader("Content-Type"))) {
+      this.req_.abort();
+      this.hideFetchMsg();
+
+      GM_getService().ignoreNextScript();
+
+      if (matchingTab)
+        this.win_.gBrowser.getBrowserForTab(matchingTab).loadURI(this.uri_.spec);
+      else
+        content.location.href = this.uri_.spec;
+    } else if (matchingTab)
+      this.win_.gBrowser.removeTab(matchingTab);
+  }
 };
 
 GM_ScriptDownloader.prototype.handleScriptDownloadComplete = function() {
