@@ -46,7 +46,7 @@ sed \
 cat tmp > chrome.manifest
 rm tmp
 find content skin locale | sort | \
-  zip -r -0 -@ "greasemonkey.jar" > /dev/null
+  zip -r -9 -@ "greasemonkey.jar" > /dev/null
 rm -fr content/ skin/ locale/
 mkdir chrome
 mv greasemonkey.jar chrome/
