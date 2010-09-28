@@ -149,10 +149,10 @@ function GM_chooseSaveLocation(returnUri) {
 
 // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ //
 
-function GM_downloadFile(name, url, saveLoc) {
+function GM_downloadFile(url, saveLoc, name) {
   var uri = GM_uriFromUrl(url);
 
-  if (uri.scheme == "file") return;
+  if (!uri || uri.scheme == "file") return;
 
   // If save location is specified use it
   if (saveLoc) {
@@ -169,6 +169,15 @@ function GM_downloadFile(name, url, saveLoc) {
 
   // We don't know where to save so we must abort
   if (!file) return;
+
+  // If the name for the new file isn't given, use the remote filename
+  if (!name) {
+    var lastSlash = uri.path.lastIndexOf("/");
+    if (lastSlash > 0 && lastSlash < uri.path.length - 1)
+      var name = uri.path.substring(lastSlash + 1);
+    else
+      return;
+  }
 
   // Create a unique name so we don't overwrite files
   file.append(name);
