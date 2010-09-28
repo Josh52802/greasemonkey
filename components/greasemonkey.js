@@ -260,6 +260,8 @@ GM_GreasemonkeyService.prototype = {
     var storage;
     var xmlhttpRequester;
     var resources;
+    var picker;
+    var downloader;
     var unsafeContentWin = wrappedContentWin.wrappedJSObject;
 
     // detect and grab reference to firebug console and context, if it exists
@@ -277,6 +279,9 @@ GM_GreasemonkeyService.prototype = {
                                                  appSvc.hiddenDOMWindow,
                                                  url);
       resources = new GM_Resources(script);
+
+      downloader = GM_downloadFile;
+      picker = function() { return GM_chooseSaveLocation(false) };
 
       sandbox.window = wrappedContentWin;
       sandbox.document = sandbox.window.document;
@@ -304,6 +309,8 @@ GM_GreasemonkeyService.prototype = {
       sandbox.GM_registerMenuCommand = GM_hitch(this,
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
+      sandbox.GM_downloadFile = downloader;
+      sandbox.GM_chooseSaveLocation = picker;
 
       sandbox.__proto__ = wrappedContentWin;
 

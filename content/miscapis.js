@@ -126,3 +126,77 @@ function GM_console(script) {
 
 GM_console.prototype.log = function() {
 };
+
+// \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ //
+
+function GM_chooseSaveLocation(returnUri) {
+  var win = Cc['@mozilla.org/appshell/window-mediator;1']
+    .getService(Ci.nsIWindowMediator)
+    .getMostRecentWindow("navigator:browser");
+
+  var fp = Cc["@mozilla.org/filepicker;1"]
+    .createInstance(Ci.nsIFilePicker);
+
+  fp.init(win, null, Ci.nsIFilePicker.modeGetFolder);
+  fp.appendFilters(Ci.nsIFilePicker.filterAll);
+
+  if (fp.show() == Ci.nsIFilePicker.returnOK) {
+    return returnUri ? fp.file : fp.file.path;
+  } else {
+    return null;
+  }
+}
+
+// \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ //
+
+function GM_downloadFile(name, url, saveLoc) {
+  var uri = GM_uriFromUrl(url);
+
+  if (uri.scheme == "file") return;
+
+  // If save location is specified use it
+  if (saveLoc) {
+    var file = Cc["@mozilla.org/file/local;1"]
+      .createInstance(Components.interfaces.nsILocalFile);  
+    file.initWithPath(saveLoc);
+  }
+
+  // If save location isn't specified or it's invalid
+  // ask the user to choose a save location
+  if (!saveLoc || !file.exists()) {
+    var file = GM_chooseSaveLocation(true);
+  }
+
+  // We don't know where to save so we must abort
+  if (!file) return;
+
+  // Create a unique name so we don't overwrite files
+  file.append(name);
+  file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0644);
+
+  // Get the iterface goop
+  const nsIWBP = Ci.nsIWebBrowserPersist;
+  const nsIDM = Ci.nsIDownloadManager;
+
+  var dm = Cc["@mozilla.org/download-manager;1"]
+    .getService(nsIDM);
+
+  var persist = Cc['@mozilla.org/embedding/browser/nsWebBrowserPersist;1']
+    .createInstance(Ci.nsIWebBrowserPersist);
+  persist.persistFlags = nsIWBP.PERSIST_FLAGS_BYPASS_CACHE;
+
+  // Add the download to the manager
+  var dl = dm.addDownload(nsIDM.DOWNLOAD_TYPE_DOWNLOAD,
+    uri,
+    GM_getUriFromFile(file),
+    file.leafName,
+    null,
+    new Date(),
+    null,
+    persist);
+
+  persist.progressListener = dl;
+
+  // Initialize the download
+  persist.saveURI(uri, null, null, null, null, file);
+}
