@@ -132,6 +132,7 @@ GM_console.prototype.log = function() {
 function GM_chooseSaveLocation(script, returnUri) {
   this._script = script;
   this._returnUri = returnUri;
+  this.prefMan = new GM_PrefManager(script.savePaths);
 
   this._win = Cc['@mozilla.org/appshell/window-mediator;1']
     .getService(Ci.nsIWindowMediator)
@@ -141,14 +142,15 @@ function GM_chooseSaveLocation(script, returnUri) {
     .createInstance(Ci.nsIFilePicker);
 }
 
-GM_chooseSaveLocation.prototype.choose = function() {
+GM_chooseSaveLocation.prototype.choose = function(pathKey) {
   // TODO: localize this string
   this._fp.init(this._win, "Choose where " + this._script.name + " may download files...", 
       Ci.nsIFilePicker.modeGetFolder);
   this._fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
   if (this._fp.show() == Ci.nsIFilePicker.returnOK) {
-    return this._returnUri ? this._fp.file : this._fp.file.path;
+    if (pathKey) this.prefMan.setValue(pathKey, this._fp.file.path);
+    if (this._returnUri) return this._fp.file;
   } else {
     return null;
   }
@@ -173,23 +175,31 @@ function GM_downloadFile(script) {
   this._script = script;
 }
 
-GM_downloadFile.prototype.download = function(url, saveLoc, name) {
+GM_downloadFile.prototype.download = function(url, pathKey, name) {
   var uri = GM_uriFromUrl(url);
   var picker = new GM_chooseSaveLocation(this._script, true);
+  var file = null;
 
   if (!uri || uri.scheme == "file") return;
 
-  // If save location is specified use it
-  if (saveLoc) {
-    var file = Cc["@mozilla.org/file/local;1"]
-      .createInstance(Components.interfaces.nsILocalFile);  
-    file.initWithPath(saveLoc);
+  // If pathKey is specified retrieve the path
+  if (pathKey) {
+    var path = picker.prefMan.getValue(pathKey);
+
+    // If the pathKey is not defined, ask the user
+    if ("undefined" == typeof path) {
+      file = picker.choose(pathKey);
+    } else {
+      file = Cc["@mozilla.org/file/local;1"]
+        .createInstance(Components.interfaces.nsILocalFile);  
+      file.initWithPath(path);
+    }
   }
 
   // If save location isn't specified or it's invalid
   // ask the user to choose a save location
-  if (!saveLoc || !file.exists()) {
-    var file = picker.choose();
+  if (!pathKey || !file.exists()) {
+    file = picker.choose();
   }
 
   // We don't know where to save so we must abort

@@ -12,6 +12,7 @@ function Script(configNode) {
   this._namespace = "";
   this._id = null;
   this._prefroot = null;
+  this._savePaths = null;
   this._description = null;
   this._version = null;
   this._enabled = true;
@@ -51,6 +52,10 @@ Script.prototype = {
   get prefroot() {
     if (!this._prefroot) this._prefroot = ["scriptvals.", this.id, "."].join("");
     return this._prefroot;
+  },
+  get savePaths() {
+    if (!this._savePaths) this._savePaths = ["savepaths.", this.id, "."].join("");
+    return this._savePaths;
   },
   get description() { return this._description; },
   get version() { return this._version; },
