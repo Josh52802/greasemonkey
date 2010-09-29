@@ -210,6 +210,10 @@ GM_downloadFile.prototype.download = function(url, pathKey, name) {
     var lastSlash = uri.path.lastIndexOf("/");
     if (lastSlash > 0 && lastSlash < uri.path.length - 1) {
       var name = uri.path.substring(lastSlash + 1);
+
+      // Get rid of the query part
+      var qsplit = name.split('?');
+      if (qsplit.length > 1) name = qsplit[0];
     } else {
       // Let the user pick the filename
       var file = picker.saveFile();
