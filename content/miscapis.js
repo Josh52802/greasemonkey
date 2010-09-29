@@ -129,28 +129,53 @@ GM_console.prototype.log = function() {
 
 // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ //
 
-function GM_chooseSaveLocation(returnUri) {
-  var win = Cc['@mozilla.org/appshell/window-mediator;1']
+function GM_chooseSaveLocation(script, returnUri) {
+  this._script = script;
+  this._returnUri = returnUri;
+
+  this._win = Cc['@mozilla.org/appshell/window-mediator;1']
     .getService(Ci.nsIWindowMediator)
     .getMostRecentWindow("navigator:browser");
 
-  var fp = Cc["@mozilla.org/filepicker;1"]
+  this._fp = Cc["@mozilla.org/filepicker;1"]
     .createInstance(Ci.nsIFilePicker);
+}
 
-  fp.init(win, null, Ci.nsIFilePicker.modeGetFolder);
-  fp.appendFilters(Ci.nsIFilePicker.filterAll);
+GM_chooseSaveLocation.prototype.choose = function() {
+  // TODO: localize this string
+  this._fp.init(this._win, "Choose where " + this._script.name + " may download files...", 
+      Ci.nsIFilePicker.modeGetFolder);
+  this._fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
-  if (fp.show() == Ci.nsIFilePicker.returnOK) {
-    return returnUri ? fp.file : fp.file.path;
+  if (this._fp.show() == Ci.nsIFilePicker.returnOK) {
+    return this._returnUri ? this._fp.file : this._fp.file.path;
   } else {
     return null;
   }
-}
+};
+
+GM_chooseSaveLocation.prototype.saveFile = function() {
+  // TODO: localize this string
+  this._fp.init(this._win, "Choose where " + this._script.name + " may save this file...", 
+      Ci.nsIFilePicker.modeSave);
+  this._fp.appendFilters(Ci.nsIFilePicker.filterAll);
+
+  if (this._fp.show() == Ci.nsIFilePicker.returnOK) {
+    return this._fp.file;
+  } else {
+    return null;
+  }
+};
 
 // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ // \\ //
 
-function GM_downloadFile(url, saveLoc, name) {
+function GM_downloadFile(script) {
+  this._script = script;
+}
+
+GM_downloadFile.prototype.download = function(url, saveLoc, name) {
   var uri = GM_uriFromUrl(url);
+  var picker = new GM_chooseSaveLocation(this._script, true);
 
   if (!uri || uri.scheme == "file") return;
 
@@ -164,7 +189,7 @@ function GM_downloadFile(url, saveLoc, name) {
   // If save location isn't specified or it's invalid
   // ask the user to choose a save location
   if (!saveLoc || !file.exists()) {
-    var file = GM_chooseSaveLocation(true);
+    var file = picker.choose();
   }
 
   // We don't know where to save so we must abort
@@ -173,10 +198,13 @@ function GM_downloadFile(url, saveLoc, name) {
   // If the name for the new file isn't given, use the remote filename
   if (!name) {
     var lastSlash = uri.path.lastIndexOf("/");
-    if (lastSlash > 0 && lastSlash < uri.path.length - 1)
+    if (lastSlash > 0 && lastSlash < uri.path.length - 1) {
       var name = uri.path.substring(lastSlash + 1);
-    else
-      return;
+    } else {
+      // Let the user pick the filename
+      var file = picker.saveFile();
+      if (!file) return;
+    }
   }
 
   // Create a unique name so we don't overwrite files
@@ -208,4 +236,4 @@ function GM_downloadFile(url, saveLoc, name) {
 
   // Initialize the download
   persist.saveURI(uri, null, null, null, null, file);
-}
+};

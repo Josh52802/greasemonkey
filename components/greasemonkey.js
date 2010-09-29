@@ -280,8 +280,8 @@ GM_GreasemonkeyService.prototype = {
                                                  url);
       resources = new GM_Resources(script);
 
-      downloader = GM_downloadFile;
-      picker = function() { return GM_chooseSaveLocation(false) };
+      downloader = new GM_downloadFile(script);
+      picker = new GM_chooseSaveLocation(script, false);
 
       sandbox.window = wrappedContentWin;
       sandbox.document = sandbox.window.document;
@@ -309,8 +309,8 @@ GM_GreasemonkeyService.prototype = {
       sandbox.GM_registerMenuCommand = GM_hitch(this,
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
-      sandbox.GM_downloadFile = downloader;
-      sandbox.GM_chooseSaveLocation = picker;
+      sandbox.GM_downloadFile = GM_hitch(downloader, "download");
+      sandbox.GM_chooseSaveLocation = GM_hitch(picker, "choose");
 
       sandbox.__proto__ = wrappedContentWin;
 
