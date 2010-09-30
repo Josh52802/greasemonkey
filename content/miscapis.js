@@ -152,7 +152,7 @@ GM_chooseSaveLocation.prototype.choose = function(pathKey) {
     if (pathKey) this.prefMan.setValue(pathKey, this._fp.file.path);
     if (this._returnUri) return this._fp.file;
   } else {
-    return null;
+    if (this._returnUri) return null;
   }
 };
 
@@ -199,7 +199,7 @@ GM_downloadFile.prototype.download = function(url, pathKey, name) {
   // If save location isn't specified or it's invalid
   // ask the user to choose a save location
   if (!pathKey || !file.exists()) {
-    file = picker.choose();
+    file = picker.choose(pathKey);
   }
 
   // We don't know where to save so we must abort
