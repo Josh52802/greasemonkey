@@ -143,6 +143,8 @@ function GM_chooseSaveLocation(script, returnUri) {
 }
 
 GM_chooseSaveLocation.prototype.choose = function(pathKey) {
+  if (!this._returnUri && !GM_apiLeakCheck("GM_chooseSaveLocation")) return;
+
   // TODO: localize this string
   this._fp.init(this._win, "Choose where " + this._script.name + " may download files...", 
       Ci.nsIFilePicker.modeGetFolder);
@@ -176,6 +178,8 @@ function GM_downloadFile(script) {
 }
 
 GM_downloadFile.prototype.download = function(url, pathKey, name) {
+  if (!GM_apiLeakCheck("GM_downloadFile")) return;
+
   var uri = GM_uriFromUrl(url);
   var picker = new GM_chooseSaveLocation(this._script, true);
   var file = null;
