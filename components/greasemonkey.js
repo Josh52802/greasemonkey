@@ -260,7 +260,6 @@ GM_GreasemonkeyService.prototype = {
     var storage;
     var xmlhttpRequester;
     var resources;
-    var picker;
     var downloader;
     var unsafeContentWin = wrappedContentWin.wrappedJSObject;
 
@@ -281,7 +280,6 @@ GM_GreasemonkeyService.prototype = {
       resources = new GM_Resources(script);
 
       downloader = new GM_downloadFile(script);
-      picker = new GM_chooseSaveLocation(script, false);
 
       sandbox.window = wrappedContentWin;
       sandbox.document = sandbox.window.document;
@@ -310,7 +308,6 @@ GM_GreasemonkeyService.prototype = {
                                                 "registerMenuCommand",
                                                 unsafeContentWin);
       sandbox.GM_downloadFile = GM_hitch(downloader, "download");
-      sandbox.GM_chooseSaveLocation = GM_hitch(picker, "choose");
 
       sandbox.__proto__ = wrappedContentWin;
 
