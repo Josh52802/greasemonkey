@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE bindings>
+
+<bindings xmlns="http://www.mozilla.org/xbl"
+  xmlns:xbl="http://www.mozilla.org/xbl"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+  <binding id="userscript-sorters"
+           extends="chrome://mozapps/content/extensions/extensions.xml#sorters">
+    <implementation>
+      <property name="_btnExecution">
+        <getter>
+          return document.getElementById('btn-userscript-execution');
+        </getter>
+      </property>
+      <method name="_refreshState">
+        <body><![CDATA[
+          // Code copied from chrome://mozapps/content/extensions/extensions.xml#sorters
+          var sortBy = this.sortBy;
+          var checkState = this.ascending ? 2 : 1;
+
+          if (sortBy == "name")
+            this._btnName.checkState = checkState;
+          else
+            this._btnName.checkState = 0;
+
+          if (sortBy == "dateUpdated")
+            this._btnDate.checkState = checkState;
+          else
+            this._btnDate.checkState = 0;
+
+          if (sortBy == "relevancescore")
+            this._btnRelevance.checkState = checkState;
+          else
+            this._btnRelevance.checkState = 0;
+
+          // New code added for Greasemonkey to show execution order is selected
+          if (sortBy == "executionIndex")
+            this._btnExecution.setAttribute('checkState', checkState);
+          else
+            this._btnExecution.setAttribute('checkState', 0);
+
+          if (this.handler && "onSortChanged" in this.handler)
+            this.handler.onSortChanged(sortBy, this.ascending);
+
+        ]]></body>
+      </method>
+    </implementation>
+  </binding>
+</bindings>

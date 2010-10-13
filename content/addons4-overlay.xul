@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 
 <?xml-stylesheet href="chrome://greasemonkey/skin/addons4.css" type="text/css"?>
+<?xml-stylesheet href="chrome://greasemonkey/content/addons4.css" type="text/css"?>
 
 <!DOCTYPE overlay [
 <!ENTITY % greasemonkeyDTD SYSTEM "chrome://greasemonkey/locale/greasemonkey.dtd">
