@@ -89,22 +89,25 @@ GM_BrowserUI.chromeLoad = function(e) {
 
   this.gmSvc.registerBrowser(this);
 
-  // Add the Greasemonkey toolbar icon
-  try {
-    var navBar = document.getElementById("nav-bar");
-    var curSet = navBar.currentSet;
-    if (curSet.indexOf("gm-button") == -1 && 
-        curSet.indexOf("bookmarks-menu-button-container") != -1) {
-      var newSet = curSet.replace(/bookmarks-menu-button-container/, 
-        "gm-button,bookmarks-menu-button-container");
-      navBar.setAttribute("currentset", newSet);
-      navBar.currentSet = newSet;
-      document.persist("nav-bar", "currentset");
-      try {
-        BrowserToolboxCustomizeDone(true);
-      } catch (e) { }
-    }
-  } catch(e) { }
+  // Add the Greasemonkey toolbar icon by default only once
+  if (GM_prefRoot.getValue('addGMToolbarIcon', true)) {
+    try {
+      var navBar = document.getElementById("nav-bar");
+      var curSet = navBar.currentSet;
+      if (curSet.indexOf("gm-button") == -1 && 
+          curSet.indexOf("bookmarks-menu-button-container") != -1) {
+        var newSet = curSet.replace(/bookmarks-menu-button-container/, 
+           "gm-button,bookmarks-menu-button-container");
+        navBar.setAttribute("currentset", newSet);
+        navBar.currentSet = newSet;
+        document.persist("nav-bar", "currentset");
+        GM_prefRoot.setValue('addGMToolbarIcon', false);
+        try {
+          BrowserToolboxCustomizeDone(true);
+        } catch (e) { }
+      }
+    } catch(e) { }
+  }
 };
 
 /**
