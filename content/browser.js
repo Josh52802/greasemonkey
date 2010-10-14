@@ -47,6 +47,7 @@ GM_BrowserUI.chromeLoad = function(e) {
   // Store other DOM element references in this object, also for use elsewhere.
   this.tabBrowser = document.getElementById("content");
   this.statusImage = document.getElementById("gm-status-image");
+  this.toolbarButton = document.getElementById("gm-button");
   this.statusLabel = document.getElementById("gm-status-label");
   this.statusEnabledItem = document.getElementById("gm-status-enabled-item");
   this.generalMenuEnabledItem = document.getElementById("gm-general-menu-enabled-item");
@@ -508,11 +509,51 @@ function GM_popupClicked(aEvent) {
  */
 GM_BrowserUI.refreshStatus = function() {
   if (GM_getEnabled()) {
-    this.statusImage.src = "chrome://greasemonkey/skin/icon_small.png";
-    this.statusImage.tooltipText = this.bundle.getString("tooltip.enabled");
+    var statusImage = document.getElementById("gm-status-image");
+    if (statusImage) {
+      if (!this.statusImage) {
+        this.statusImage = statusImage;
+      }
+      this.statusImage.src = "chrome://greasemonkey/skin/icon_small.png";
+      if (!this.bundle) {
+        this.statusImage.tooltipText = "Greasemonkey";
+      }
+      else {
+        this.statusImage.tooltipText = this.bundle.getString("tooltip.enabled");
+      }
+    }
+
+    var toolbarButton = document.getElementById("gm-button");
+    if (toolbarButton) {
+      if (!this.toolbarButton) {
+        this.toolbarButton = toolbarButton;
+      }
+      this.toolbarButton.image = this.statusImage.src;
+      this.toolbarButton.tooltipText = this.statusImage.tooltipText;
+    }
   } else {
-    this.statusImage.src = "chrome://greasemonkey/skin/icon_small_disabled.png";
-    this.statusImage.tooltipText = this.bundle.getString("tooltip.disabled");
+    var statusImage = document.getElementById("gm-status-image");
+    if (statusImage) {
+      if (!this.statusImage) {
+        this.statusImage = statusImage;
+      }
+      this.statusImage.src = "chrome://greasemonkey/skin/icon_small_disabled.png";
+      if (!this.bundle) {
+        this.statusImage.tooltipText = "Greasemonkey";
+      }
+      else {
+        this.statusImage.tooltipText = this.bundle.getString("tooltip.enabled");
+      }
+    }
+
+    var toolbarButton = document.getElementById("gm-button");
+    if (toolbarButton) {
+      if (!this.toolbarButton) {
+        this.toolbarButton = toolbarButton;
+      }
+      this.toolbarButton.image = this.statusImage.src;
+      this.toolbarButton.tooltipText = this.statusImage.tooltipText;
+    }
   }
 
   this.statusImage.style.opacity = "1.0";
