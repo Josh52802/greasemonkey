@@ -151,14 +151,11 @@ GM_GreasemonkeyService.prototype = {
   },
 
   domContentLoaded: function(wrappedContentWin, chromeWin) {
-    //var url = wrappedContentWin.document.location.href;
-    var unsafeWin = wrappedContentWin.wrappedJSObject;
-    var unsafeLoc = new XPCNativeWrapper(unsafeWin, "location").location;
-    var url = new XPCNativeWrapper(unsafeLoc, "href").href;
+    var url = wrappedContentWin.document.location.href;
     var scripts = this.initScripts(url, wrappedContentWin, chromeWin);
 
     if (scripts.length > 0) {
-      this.injectScripts(scripts, url, unsafeWin, chromeWin);
+      this.injectScripts(scripts, url, wrappedContentWin, chromeWin);
     }
   },
 
@@ -249,7 +246,7 @@ GM_GreasemonkeyService.prototype = {
         });
   },
 
-  injectScripts: function(scripts, url, unsafeContentWin, chromeWin) {
+  injectScripts: function(scripts, url, wrappedContentWin, chromeWin) {
     var sandbox;
     var script;
     var logger;
@@ -257,9 +254,8 @@ GM_GreasemonkeyService.prototype = {
     var storage;
     var xmlhttpRequester;
     var resources;
+    var unsafeContentWin = wrappedContentWin.wrappedJSObject;
     var safeWin = new XPCNativeWrapper(unsafeContentWin);
-    var safeDoc = safeWin.document;
-    //var unsafeContentWin = wrappedContentWin.wrappedJSObject;
 
     // detect and grab reference to firebug console and context, if it exists
     var firebugConsole = this.getFirebugConsole(unsafeContentWin, chromeWin);
@@ -277,8 +273,6 @@ GM_GreasemonkeyService.prototype = {
                                                  url);
       resources = new GM_Resources(script);
 
-      sandbox.window = safeWin;
-      sandbox.document = sandbox.window.document;
       sandbox.unsafeWindow = unsafeContentWin;
 
       // hack XPathResult since that is so commonly used
@@ -286,7 +280,7 @@ GM_GreasemonkeyService.prototype = {
 
       // add our own APIs
       sandbox.GM_addStyle = function(css) {
-            GM_addStyle(safeDoc, css);
+            GM_addStyle(safeWin.document, css);
           };
       sandbox.GM_log = GM_hitch(logger, "log");
       sandbox.console = console;
@@ -305,8 +299,8 @@ GM_GreasemonkeyService.prototype = {
                                                 unsafeContentWin);
 
       sandbox.__proto__ = safeWin;
-      //Components.utils.evalInSandbox(
-      //"var document = window.document;", sandbox);
+      Components.utils.evalInSandbox(
+          "var document = window.document;", sandbox);
 
       var contents = script.textContent;
 
