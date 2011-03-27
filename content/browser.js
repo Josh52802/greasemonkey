@@ -98,7 +98,10 @@ GM_BrowserUI.contentLoad = function(event) {
   var href = safeWin.location.href;
 
   if (GM_isGreasemonkeyable(href)) {
-    GM_BrowserUI.gmSvc.domContentLoaded(safeWin, window);
+    if (!event.persisted) {
+      GM_BrowserUI.gmSvc.contentUnloaded(safeWin, window);
+      GM_BrowserUI.gmSvc.domContentLoaded(safeWin, window);
+    }
     GM_MenuCommander.attachKeys();
   }
 
@@ -117,7 +120,7 @@ GM_BrowserUI.contentUnload = function(event) {
   var safeWin = event.target.defaultView;
 
   if (GM_isGreasemonkeyable(safeWin.location.href)) {
-    GM_BrowserUI.gmSvc.contentUnloaded(safeWin, window);
+    if (!event.persisted) GM_BrowserUI.gmSvc.contentUnloaded(safeWin, window);
     GM_MenuCommander.detachKeys();
   }
 };
