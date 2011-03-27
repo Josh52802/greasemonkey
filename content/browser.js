@@ -47,11 +47,11 @@ GM_BrowserUI.chromeLoad = function(e) {
   GM_prefRoot.watch("enabled", GM_BrowserUI.refreshStatus);
   GM_BrowserUI.refreshStatus();
 
-  gBrowser.addEventListener("DOMContentLoaded", GM_BrowserUI.contentLoad, true);
+  gBrowser.addEventListener("pageshow", GM_BrowserUI.contentLoad, true);
   gBrowser.addEventListener("pagehide", GM_BrowserUI.contentUnload, true);
 
   var sidebar = document.getElementById("sidebar");
-  sidebar.addEventListener("DOMContentLoaded", GM_BrowserUI.contentLoad, true);
+  sidebar.addEventListener("pageshow", GM_BrowserUI.contentLoad, true);
   sidebar.addEventListener("pagehide", GM_BrowserUI.contentUnload, true);
 
   document.getElementById("contentAreaContextMenu")
@@ -114,8 +114,6 @@ GM_BrowserUI.contentLoad = function(event) {
 };
 
 GM_BrowserUI.contentUnload = function(event) {
-  if (event.persisted) return;  // http://goo.gl/qeY5W
-
   var safeWin = event.target.defaultView;
 
   if (GM_isGreasemonkeyable(safeWin.location.href)) {
