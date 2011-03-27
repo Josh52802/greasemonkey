@@ -47,11 +47,13 @@ GM_BrowserUI.chromeLoad = function(e) {
   GM_prefRoot.watch("enabled", GM_BrowserUI.refreshStatus);
   GM_BrowserUI.refreshStatus();
 
-  gBrowser.addEventListener("pageshow", GM_BrowserUI.contentLoad, true);
+  gBrowser.addEventListener("DOMContentLoaded", GM_BrowserUI.contentLoad, true);
+  gBrowser.addEventListener("pageshow", GM_BrowserUI.pageShow, true);
   gBrowser.addEventListener("pagehide", GM_BrowserUI.contentUnload, true);
 
   var sidebar = document.getElementById("sidebar");
-  sidebar.addEventListener("pageshow", GM_BrowserUI.contentLoad, true);
+  sidebar.addEventListener("DOMContentLoaded", GM_BrowserUI.contentLoad, true);
+  sidebar.addEventListener("pageshow", GM_BrowserUI.pageShow, true);
   sidebar.addEventListener("pagehide", GM_BrowserUI.contentUnload, true);
 
   document.getElementById("contentAreaContextMenu")
@@ -88,8 +90,6 @@ GM_BrowserUI.openInTab = function(domWindow, url) {
 
 /**
  * Gets called when a DOMContentLoaded event occurs somewhere in the browser.
- * If that document is in in the top-level window of the focused tab, find
- * it's menu items and activate them.
  */
 GM_BrowserUI.contentLoad = function(event) {
   if (!GM_getEnabled()) return;
@@ -98,10 +98,27 @@ GM_BrowserUI.contentLoad = function(event) {
   var href = safeWin.location.href;
 
   if (GM_isGreasemonkeyable(href)) {
-    if (!event.persisted) {
-      GM_BrowserUI.gmSvc.contentUnloaded(safeWin, window);
-      GM_BrowserUI.gmSvc.domContentLoaded(safeWin, window);
-    }
+    // Remove old menu items since scripts are ran again
+    GM_BrowserUI.gmSvc.contentUnloaded(safeWin, window);
+
+    // Run the scripts for the page
+    GM_BrowserUI.gmSvc.domContentLoaded(safeWin, window);
+  }
+};
+
+/**
+ * Gets called when a pageshow event occurs somewhere in the browser.
+ * If that document is in in the top-level window of the focused tab, find
+ * it's menu items and activate them.
+ */
+GM_BrowserUI.pageShow = function(event) {
+  if (!GM_getEnabled()) return;
+
+  var safeWin = event.target.defaultView;
+  var href = safeWin.location.href;
+
+  if (GM_isGreasemonkeyable(href)) {
+    // Attach the actual menu items
     GM_MenuCommander.attachKeys();
   }
 
