@@ -54,6 +54,12 @@ function addonIsInstalledScript(aAddon) {
   return true;
 };
 
+function sortedByExecOrder() {
+  return document.getElementById('greasemonkey-sort-bar')
+    .getElementsByAttribute('sortBy', 'executionIndex')[0]
+    .hasAttribute('checkState');
+};
+
 function init() {
   GM_getConfig().addObserver(observer);
 
@@ -67,19 +73,19 @@ function init() {
     };
 
   gViewController.commands.cmd_userscript_execute_first = {
-      isEnabled: function() { return true; },
+      isEnabled: sortedByExecOrder,
       doCommand: function(aAddon) { reorderScriptExecution(aAddon, -9999); }
     };
   gViewController.commands.cmd_userscript_execute_sooner = {
-      isEnabled: function() { return true; },
+      isEnabled: sortedByExecOrder,
       doCommand: function(aAddon) { reorderScriptExecution(aAddon, -1); }
     };
   gViewController.commands.cmd_userscript_execute_later = {
-      isEnabled: function() { return true; },
+      isEnabled: sortedByExecOrder,
       doCommand: function(aAddon) { reorderScriptExecution(aAddon, 1); }
     };
   gViewController.commands.cmd_userscript_execute_last = {
-      isEnabled: function() { return true; },
+      isEnabled: sortedByExecOrder,
       doCommand: function(aAddon) { reorderScriptExecution(aAddon, 9999); }
     };
 
