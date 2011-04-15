@@ -54,6 +54,12 @@ function addonIsInstalledScript(aAddon) {
   return true;
 };
 
+function sortedByExecOrder() {
+  return document.getElementById('greasemonkey-sort-bar')
+    .getElementsByAttribute('sortBy', 'executionIndex')[0]
+    .hasAttribute('checkState');
+};
+
 function init() {
   GM_getConfig().addObserver(observer);
 
@@ -160,7 +166,17 @@ function onViewChanged(aEvent) {
   }
 };
 
+function selectScriptExecOrder() {
+  if (sortedByExecOrder()) return;
+
+  var button = document.getElementById('greasemonkey-sort-bar')
+    .getElementsByAttribute('sortBy', 'executionIndex')[0];
+  // Sort the script list by execution order
+  onSortersClicked({'target': button});
+};
+
 function reorderScriptExecution(aAddon, moveBy) {
+  selectScriptExecOrder();
   GM_getConfig().move(aAddon._script, moveBy);
   AddonManager.getAddonsByTypes(['user-script'], function(aAddons) {
       // Fix all the 'executionOrder' attributes.
