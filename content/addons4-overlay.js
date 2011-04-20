@@ -43,7 +43,9 @@ var observer = {
     }
 
     needSortOrderFixed = true;
-    gViewController.loadViewInternal('addons://list/user-script', null);
+    setTimeout(function() {
+          gViewController.loadViewInternal('addons://list/user-script', null);
+        }, 0);
   }
 };
 
