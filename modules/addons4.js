@@ -170,6 +170,7 @@ ScriptAddon.prototype.uninstall = function() {
 };
 
 ScriptAddon.prototype.cancelUninstall = function() {
+  this._script.enabled = true;
   this.pendingOperations ^= AddonManager.PENDING_UNINSTALL;
   AddonManagerPrivate.callAddonListeners("onOperationCancelled", this);
 };
