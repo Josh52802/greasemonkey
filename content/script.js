@@ -35,6 +35,7 @@ function Script(configNode) {
   this._runAt = null;
   this._rawMeta = null;
   this.pendingExec = [];
+  this.alreadyExec = [];
 
   if (configNode) this._loadFromConfigNode(configNode);
 }
